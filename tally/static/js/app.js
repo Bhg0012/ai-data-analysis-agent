@@ -114,7 +114,8 @@
           <span>${T.icons.spark} Plain-English answers</span>
         </div>
         <div id="recent"></div>
-      </div>`;
+      </div>
+      <div class="version-tag" title="${e(versionTitle())}">${e(versionText())}</div>`;
     paintPicker();
     try {
       const list = (await api("/api/reports")).slice(0, 3);
@@ -505,6 +506,26 @@
     return (n / 1024 / 1024).toFixed(1) + " MB";
   }
 
+  /* "Version 0.1.0 · Updated Oct 14, 2026, 3:17 PM": when the copy on this computer was published. */
+  function versionText() {
+    const st = state.status;
+    if (!st) return "";
+    const r = st.release || {};
+    let when = "";
+    if (r.published) {
+      const d = new Date(r.published);
+      if (!isNaN(d)) {
+        when = d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) + " at " +
+          d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+      }
+    }
+    return `Version ${st.version}` + (when ? ` · Updated ${when}` : "");
+  }
+  function versionTitle() {
+    const r = (state.status && state.status.release) || {};
+    return r.commit ? `GitHub version ${r.commit}` : "";
+  }
+
   // ------------------------------------------------------------ settings
   async function openSettings() {
     const root = $("#drawer-root");
@@ -570,7 +591,7 @@
       <section><div class="section-label">Advanced</div>
         <div class="field"><label for="ourl">Ollama address</label><input class="input" id="ourl" value="${e(set.ollama_url)}"></div>
         <div><button class="btn small" id="saveurl">Save address</button></div>
-        <p class="muted" style="font-size:12.5px">Tally ${e(s.version)}</p>
+        <p class="muted" style="font-size:12.5px">${e(versionText())}${s.release && s.release.commit ? ` (${e(s.release.commit)})` : ""}</p>
       </section>`;
 
     const save = async (patch) => { await post("/api/settings", patch); await refreshStatus(); paintSettings(); };
