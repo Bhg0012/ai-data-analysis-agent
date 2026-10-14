@@ -22,7 +22,7 @@ def analyze(path: Path, *, file_name: str, sheet: str | None, context: str, sett
     prof = classify(df, loaded.units, context)
 
     step("stats", "Running statistical checks")
-    engine = insights.Engine(df, prof, progress=lambda label: step("stats", label))
+    engine = insights.Engine(df, prof, progress=lambda label, frac, nxt: step("stats", label, frac, nxt))
     cands = engine.run()
     chosen = insights.select(cands, prof)
 
@@ -35,21 +35,40 @@ def analyze(path: Path, *, file_name: str, sheet: str | None, context: str, sett
     if status.get("ready") and report["insights"]:
         model = status["model"]
         total = len(report["insights"])
+        brief = data_brief(report, prof)
+        step("write", "Waking up the AI model", 0.0, 0.1)
+        client.warm(model)
         new = []
         for i, ins in enumerate(report["insights"]):
-            step("write", f"Writing it in plain English ({i + 1} of {total})")
-            new.append(narrate.rewrite_insight(client, model, ins, context))
+            step("write", f"Writing it in plain English ({i + 1} of {total})",
+                 0.1 + 0.9 * i / (total + 1), 0.1 + 0.9 * (i + 1) / (total + 1))
+            new.append(narrate.rewrite_insight(client, model, ins, context, brief))
         report["insights"] = new
-        step("write", "Writing the story")
+        step("write", "Writing the story", 0.1 + 0.9 * total / (total + 1), 1.0)
         story = narrate.write_story(client, model, report, context)
         if story:
             report["story"].update(story)
             report["story"]["ai_written"] = True
         report["model"] = model
     else:
-        step("write", "Writing it in plain English")
+        step("write", "Writing it in plain English", 0.0, 1.0)
     step("done", "Done")
     return report
+
+
+def data_brief(report: dict, prof) -> str:
+    """A short description of the spreadsheet so the AI can explain what columns mean."""
+    lines = [f"Each row is one {prof.row_noun} ({report['dataset']['rows']} rows)."]
+    for c in report["dataset"]["column_list"]:
+        if c["role"] in ("measure", "category", "time"):
+            unit = c.get("unit") or {}
+            u = " (money)" if unit.get("kind") == "currency" else " (a percent)" if unit.get("kind") == "percent" else ""
+            if c.get("levels"):
+                desc = f"{c['unique']} groups: {', '.join(c['levels'][:6])}"
+            else:
+                desc = c.get("summary", "")
+            lines.append(f"- {c['name']}{u}: {desc}")
+    return "\n".join(lines[:40])
 
 
 def build_report(df, prof, loaded, engine, cands, chosen, *, file_name, sheet, context, other_sheets) -> dict:
@@ -113,7 +132,7 @@ def build_report(df, prof, loaded, engine, cands, chosen, *, file_name, sheet, c
         "file_name": file_name, "sheet": sheet, "other_sheets": other_sheets, "context": context,
         "model": None,
         "dataset": {
-            "rows": rows, "columns": cols, "main_metric": main,
+            "rows": rows, "columns": cols, "main_metric": main, "row_noun": prof.row_noun,
             "column_list": describe_columns(df, prof),
         },
         "story": {"title": title, "intro": intro, "takeaways": takeaways, "next_steps": next_steps, "ai_written": False},

@@ -73,8 +73,9 @@ def test_clear_group_difference_is_found(tmp_path):
     p = tmp_path / "groups.csv"
     pd.DataFrame({"Region": region, "Sales": sales.round(2)}).to_csv(p, index=False)
     r = run(p)
-    heads = [i["headline"] for i in r["insights"] if i["kind"] == "group"]
-    assert heads and heads[0].startswith("North")
+    groups = [i for i in r["insights"] if i["kind"] == "group"]
+    assert groups and groups[0]["chart"]["categories"][0] == "North"
+    assert "North" in groups[0]["headline"]
 
 
 def test_correlation_found_and_explained(tmp_path):
@@ -112,3 +113,35 @@ def test_profile_roles():
     assert prof.columns["Revenue"].additive is True
     assert prof.columns["Unit Price"].additive is False
     assert prof.main_metric == "Revenue"
+
+
+def test_every_chart_has_a_color_key():
+    r = run(SAMPLE)
+    for ins in r["insights"]:
+        key = ins["chart"].get("key")
+        assert key, f"{ins['kind']} chart is missing its 'how to read this' key"
+        assert all(k["text"] for k in key)
+
+
+def test_row_noun_is_used():
+    r = run(SAMPLE)
+    assert r["dataset"]["row_noun"] == "order"
+    assert any("order" in i["headline"] or "order" in i["explanation"] for i in r["insights"])
+
+
+def test_history_keeps_snapshots_but_prunes_old_files(tmp_path, monkeypatch):
+    from tally import history
+    monkeypatch.setenv("TALLY_DATA_DIR", str(tmp_path))
+    ids = []
+    for i in range(history.KEEP_SOURCES + 3):
+        src = tmp_path / f"up{i}.csv"
+        src.write_text("a,b\n1,2\n")
+        rid = f"20260101-0000{i:02d}-abcdef"
+        history.save({"id": rid, "story": {"title": "t"}, "file_name": "f.csv", "created_at": f"2026-01-01T00:00:{i:02d}",
+                      "dataset": {"rows": 1}, "insights": []}, src)
+        assert not src.exists(), "the upload should be moved, not copied"
+        ids.append(rid)
+    listing = history.listing()
+    assert len(listing) == len(ids), "every snapshot is kept"
+    assert sum(r["has_source"] for r in listing) == history.KEEP_SOURCES
+    assert history.has_source(ids[-1]) and not history.has_source(ids[0])

@@ -137,6 +137,7 @@ class Engine:
         self.health: list[str] = []
         self.derived: dict[str, tuple[str, str, str]] = {}
         self.progress = progress or (lambda *_: None)
+        self.row, self.rows = prof.row_noun, prof.rows_noun
 
     # ---------------------------------------------------------------- utils
     def unit(self, col):
@@ -169,8 +170,8 @@ class Engine:
             ("Checking how categories overlap", self.associations),
             ("Hunting for unusual values", self.outliers),
         ]
-        for label, fn in steps:
-            self.progress(label)
+        for i, (label, fn) in enumerate(steps):
+            self.progress(label, i / len(steps), (i + 1) / len(steps))
             try:
                 fn()
             except Exception as e:  # noqa: BLE001 - one bad check must not sink the report
@@ -323,16 +324,17 @@ class Engine:
                 "percent_change": change_txt, "periods_compared": str(len(y)),
                 "highest_period": labels[peak_i], "highest_value": vfmt(g.iloc[peak_i]),
             }
-            dir_word = "grown" if up else "dropped"
-            title = f"{name} {'is rising' if up else 'is falling'} over time"
+            dir_word = "gone up" if up else "gone down"
+            title = f"{name} {'keeps going up' if up else 'keeps going down'}"
             if change_txt:
-                headline = f"{what} has {dir_word} by about {change_txt} from {labels[0]} to {labels[-1]}."
+                headline = f"{what} has {dir_word} by about {change_txt}, from {labels[0]} to {labels[-1]}."
             else:
-                headline = f"{what} has {dir_word} steadily from {labels[0]} to {labels[-1]}."
+                headline = f"{what} has {dir_word} steadily, from {labels[0]} to {labels[-1]}."
             expl = (
-                f"Looking {word} by {word}, the line keeps heading {'up' if up else 'down'}. "
-                f"This isn't just one lucky {word}: it's a steady pattern across {len(y)} {word}s. "
-                f"The trend line goes from about {vfmt(f_start)} to about {vfmt(f_end)} per {word}."
+                f"The blue line shows {what.lower() if m else 'how many ' + self.rows + ' there were'} in each {word}. "
+                f"It bounces around, but the dashed line shows the overall direction: {'up' if up else 'down'}. "
+                f"A normal {word} went from about {vfmt(f_start)} at the start to about {vfmt(f_end)} by the end, "
+                f"and this held steady across all {len(y)} {word}s, so it isn't a fluke."
             )
             if dropped:
                 expl += f" (I left out the {' and '.join(dropped)} {word} because it only had part of a {word} of data, which would make it look misleadingly low.)"
@@ -349,6 +351,11 @@ class Engine:
                 "trend": [float(intercept + slope * i) for i in range(len(g))],
                 "unit": self.unit(m) if m else None, "y_label": what, "x_label": word.capitalize(),
                 "highlight": [{"index": peak_i, "label": "Highest"}],
+                "key": [
+                    {"swatch": "line", "text": f"Blue line: {what.lower()} each {word}"},
+                    {"swatch": "trend", "text": "Dashed line: the overall direction"},
+                    {"swatch": "dot", "text": f"Blue dot: the highest {word}"},
+                ],
             }
             self.add(Candidate(
                 kind="trend", section="time", columns=[tcol] + ([m] if m else []), p=float(p),
@@ -380,17 +387,20 @@ class Engine:
             kind="spike", section="surprises", columns=[tcol] + ([m] if m else []), p=None,
             strength=min(1.0, abs(z[i]) / 10), passes_effect=True, test="Robust outlier check (median-based z-score)",
             effect_text=f"robust z = {z[i]:.1f}", n=len(y),
-            title=f"{labels[i]} stands out",
+            title=f"{labels[i]} was {'unusually high' if hi else 'unusually low'}",
             headline=f"{what} in {labels[i]} was {vfmt(y[i])}, far {'above' if hi else 'below'} the usual {vfmt(base[i])} around that time.",
             explanation=(
-                f"Most {word}s follow a fairly smooth pattern, but {labels[i]} breaks it. "
-                f"Something unusual probably happened then, like a promotion, a big one-off deal, an outage, or a data entry problem."
+                f"The orange dot is {labels[i]}. Every other {word} stays fairly close to its neighbors, but this one "
+                f"{'shoots up' if hi else 'drops sharply'}. Something unusual probably happened, like a promotion, "
+                "a big one-off deal, an outage, or a typo in the data."
             ),
             ideas=[f"Check what happened in {labels[i]}. If it was a success, it might be worth repeating.",
                    "If it was a mistake in the data, fixing it will make every other number more accurate."],
             chart={"type": "line", "x": labels, "y": [float(v) for v in y], "unit": self.unit(m) if m else None,
                    "y_label": what, "x_label": word.capitalize(),
-                   "highlight": [{"index": i, "label": "Unusual"}], "emphasize_point": True},
+                   "highlight": [{"index": i, "label": "Unusual"}], "emphasize_point": True,
+                   "key": [{"swatch": "line", "text": f"Blue line: {what.lower()} each {word}"},
+                           {"swatch": "attention-dot", "text": f"Orange dot: the unusual {word}"}]},
             facts=facts, measure=m, key=("spike", tcol, labels[i]),
         ))
 
@@ -460,29 +470,36 @@ class Engine:
         means = {k: _central(g, skewed) for k, g in groups.items()}
         top = max(means, key=means.get)
         low = min(means, key=means.get)
-        what = (f"total {m} per {unit_word}" if agg == "sum" else f"{_stat_word(skewed)} {m}" if m else f"records per {unit_word}")
+        what = (f"total {m} per {unit_word}" if agg == "sum" else f"{_stat_word(skewed)} {m}" if m else f"{self.rows} per {unit_word}")
         vf = (lambda x: self.v(x, m)) if m else fmt.compact
         ratio = means[top] / means[low] if means[low] > 0 else None
         thing = "s" if unit_freq == "D" else ""
         cmp = f", {fmt.times(ratio)} {low}{thing}" if ratio and ratio >= 1.15 else f", compared with {vf(means[low])} on {low}{thing}"
+        ranked = sorted(means, key=means.get, reverse=True)
+        weekend = unit_freq == "D" and set(ranked[:2]) == {"Saturday", "Sunday"}
         facts = {"metric": what, "best": top, "best_value": vf(means[top]), "worst": low, "worst_value": vf(means[low]),
-                 "pattern": label}
+                 "pattern": label, "weekends_busiest": "yes" if weekend else ""}
         self.add(Candidate(
             kind="rhythm", section="groups", columns=[tcol] + ([m] if m else []), p=float(p),
             strength=min(1.0, math.sqrt(max(eps2, 0)) * 1.6), passes_effect=eps2 >= 0.04,
             test="Kruskal-Wallis test", effect_text=f"epsilon-squared = {eps2:.3f}", n=n,
-            title=f"{top}{thing} are the strongest {'days' if unit_freq == 'D' else 'months'}",
+            title=(f"Weekends are the busiest" if weekend else f"{top}{thing} are the best {'days' if unit_freq == 'D' else 'month'}"),
             headline=f"{top}{thing} have the highest {what} ({vf(means[top])}){cmp}.",
             explanation=(
-                f"There's a real {label} pattern here. {top}{thing} consistently come out on top, "
-                f"while {low}{thing} are the quietest. This held up across the whole period, not just a few lucky {'days' if unit_freq == 'D' else 'months'}."
+                f"Each bar is one {'day of the week' if unit_freq == 'D' else 'month of the year'}, showing the {what}. "
+                f"The blue bar ({top}) is the best and {low} is the lowest. "
+                + (f"Saturday and Sunday both stand clearly above the weekdays. " if weekend else "")
+                + f"This pattern repeats week after week, so it's a real habit, not a few lucky {'days' if unit_freq == 'D' else 'months'}."
             ),
             ideas=[f"Plan staff, stock, or promotions around busy {top}{thing}.",
                    f"You could try a special offer on {low}{thing} to lift the slowest time."],
             chart={"type": "bar", "categories": list(groups.keys()), "values": [means[k] for k in groups],
                    "unit": self.unit(m) if m else None, "highlight": [list(groups).index(top)],
                    "value_label": what, "keep_order": True,
-                   "reference": {"value": _central(values, skewed), "label": "Overall"}},
+                   "reference": {"value": _central(values, skewed), "label": "Overall"},
+                   "key": [{"swatch": "data", "text": f"Blue bar: {top}, the best"},
+                           {"swatch": "rest", "text": "Gray bars: the other " + ("days" if unit_freq == "D" else "months")},
+                           {"swatch": "reference", "text": "Dashed line: the overall average"}]},
             facts=facts, measure=m, key=("rhythm", label),
         ))
 
@@ -534,21 +551,25 @@ class Engine:
                          "groups_compared": str(len(levels))}
                 if self._is_trivial_pair(cat, m):
                     continue
-                more = " ('typical' means the middle value, so a few extreme rows can't distort it)" if skewed else ""
+                more = (f" 'Typical' means the middle value, so a few unusually big {self.rows} can't skew it." if skewed else "")
                 self.add(Candidate(
                     kind="group", section="groups", columns=[cat, m], p=float(p), strength=min(1.0, eff * 1.6),
                     passes_effect=ok, test=test, effect_text=eff_txt, n=n, measure=m,
-                    title=f"{top} leads on {m}",
-                    headline=f"{top} has the highest {word} {m} ({vt}), {cmp}.",
+                    title=f"{top} has the highest {m}",
+                    headline=f"{'An' if word[0] in 'aeiou' else 'A'} {word} {self.row} for {top} has a {m} of {vt}, {cmp}.",
                     explanation=(
-                        f"When you split the data by {cat}, the {m} values are clearly different between groups{more}. "
-                        f"The gap is big enough, and based on enough rows ({fmt.count(n)}), that it's very unlikely to be random."
+                        f"Each bar is one {cat}, showing the {word} {m} per {self.row}. "
+                        f"The blue bar ({top}) is the highest and {low} is at the bottom.{more} "
+                        f"The gap holds up across {fmt.count(n)} {self.rows}, so it's a real difference, not luck."
                     ),
                     ideas=[f"Lean into what's working with {top}, and look at whether any of it could help {low}.",
                            f"Before acting, check whether {top} and {low} also differ in other ways (size, timing, who they serve)."],
                     chart={"type": "bar", "categories": [str(x) for x in ordered], "values": [cent[x] for x in ordered],
                            "unit": self.unit(m), "highlight": [0], "value_label": f"{word.capitalize()} {m}",
-                           "reference": {"value": overall, "label": "Overall"}},
+                           "reference": {"value": overall, "label": "Overall"},
+                           "key": [{"swatch": "data", "text": f"Blue bar: {top}, the highest"},
+                                   {"swatch": "rest", "text": f"Gray bars: the other {cat} groups"},
+                                   {"swatch": "reference", "text": f"Dashed line: the {word} across all {self.rows}"}]},
                     facts=facts, key=("group", cat),
                 ))
 
@@ -589,14 +610,17 @@ class Engine:
                     cats.append(f"Other ({k - 8})")
                     vals.append(float(totals.iloc[8:].sum()))
                 top = str(totals.index[0])
+                lead = (f"Each bar is the total {m} for one {cat}, and the % is its share of everything. "
+                        f"The blue bar ({top}) is the biggest. ")
                 if k >= 5 and top20 >= 0.6 and n20 > 1:
-                    headline = f"Just {n20} of {k} {cat} groups bring in {fmt.pct(top20)} of all {m}."
+                    headline = f"Just {n20} of the {k} {cat} groups make up {fmt.pct(top20)} of all {m}."
                     names = fmt.join_words([str(x) for x in totals.index[:n20]])
-                    expl = f"A small number of groups do most of the work: {names}. The other {k - n20} share what's left."
+                    expl = lead + f"A few groups do most of the work: {names}. The other {k - n20} share what's left."
                 else:
-                    headline = f"{top} brings in {fmt.pct(top1)} of all {m}, more than any other {cat}."
-                    expl = f"If {m} was spread evenly, each of the {k} groups would have about {fmt.pct(1 / k)}. {top} is well above that."
-                expl += " This comes straight from adding up your data, so the shares are exact."
+                    headline = f"{top} makes up {fmt.pct(top1)} of all {m}, more than any other {cat}."
+                    expl = lead + (f"If {m} were split evenly, each of the {k} groups would have about {fmt.pct(1 / k)}, "
+                                   f"so {top} is pulling well more than its share.")
+                expl += " These are exact totals from your data, not estimates."
                 facts = {"metric": m, "group_column": cat, "top": top, "top_share": fmt.pct(top1),
                          "top_total": self.v(float(totals.iloc[0]), m), "grand_total": self.v(float(totals.sum()), m),
                          "groups": str(k)}
@@ -609,7 +633,9 @@ class Engine:
                     ideas=[f"Protect what's working with {top}: it carries a big part of the total.",
                            f"Relying heavily on a few groups is a risk. It might be worth growing the others too."],
                     chart={"type": "bar", "categories": cats, "values": vals, "unit": self.unit(m),
-                           "highlight": [0], "value_label": f"Total {m}", "share_of": float(totals.sum())},
+                           "highlight": [0], "value_label": f"Total {m}", "share_of": float(totals.sum()),
+                           "key": [{"swatch": "data", "text": f"Blue bar: {top}, the biggest share"},
+                                   {"swatch": "rest", "text": f"Gray bars: the other {cat} groups"}]},
                     facts=facts,
                 ))
 
@@ -649,19 +675,22 @@ class Engine:
                     kind="correlation", section="together", columns=[x, y], p=float(p), strength=min(1.0, abs(rho)),
                     passes_effect=abs(rho) >= 0.3, test="Spearman rank correlation", effect_text=f"Spearman rho = {rho:.2f}",
                     n=len(sub), measure=y,
-                    title=f"More {x} goes with {'more' if up else 'less'} {y}",
-                    headline=(f"When {x} is high, {y} tends to be {'higher' if up else 'lower'}: "
-                              f"{word} {self.v(vhi, y)} for the top quarter of {x}, vs {self.v(vlo, y)} for the bottom quarter."),
+                    title=f"Higher {x} comes with {'higher' if up else 'lower'} {y}",
+                    headline=(f"{self.rows.capitalize()} with a high {x} usually have a {'higher' if up else 'lower'} {y}: "
+                              f"{word} {self.v(vhi, y)}, versus {self.v(vlo, y)} for {self.rows} with a low {x}."),
                     explanation=(
-                        f"Each dot is one row. As you move right ({x} goes up), the dots tend to drift {'up' if up else 'down'}. "
-                        f"It's a {fmt.strength_word(rho)} link across {fmt.count(len(sub))} rows. "
-                        f"Keep in mind this shows they move together, not that one causes the other."
+                        f"Each blue dot is one {self.row}. Dots further right have more {x}; dots higher up have more {y}. "
+                        f"The dark line slopes {'up' if up else 'down'}, so as {x} grows, {y} tends to {'grow too' if up else 'shrink'}. "
+                        f"This is a {fmt.strength_word(rho)} pattern across {fmt.count(len(sub))} {self.rows}, but it shows the two move together, "
+                        "not that one causes the other."
                     ),
                     ideas=[f"Test it: try changing {x} on a small scale and watch whether {y} follows.",
                            f"Use {x} as an early signal for where {y} is heading."],
                     chart={"type": "scatter", "points": sample[[x, y]].to_numpy().tolist(),
                            "trend": [[x0, intercept + slope * x0], [x1, intercept + slope * x1]],
-                           "x_label": x, "y_label": y, "x_unit": self.unit(x), "unit": self.unit(y)},
+                           "x_label": x, "y_label": y, "x_unit": self.unit(x), "unit": self.unit(y),
+                           "key": [{"swatch": "dots", "text": f"Each dot: one {self.row}"},
+                                   {"swatch": "ink-line", "text": "Dark line: the general direction"}]},
                     facts=facts,
                 ))
 
@@ -700,15 +729,19 @@ class Engine:
                     kind="association", section="groups", columns=[a, b], p=float(p), strength=min(1.0, v * 1.5),
                     passes_effect=v >= 0.2, test="Chi-square test of independence", effect_text=f"Cramer's V = {v:.2f}",
                     n=int(n), title=f"{la_} leans toward {lb_}",
-                    headline=f"{fmt.pct(share_in.iloc[ai, bi]).capitalize()} of {la_} rows are {lb_}, compared with {fmt.pct(overall.iloc[bi])} overall.",
-                    explanation=(f"{a} and {b} aren't independent: knowing one tells you something about the other. "
-                                 f"The clearest example is {la_}, where {lb_} shows up much more often than usual."),
+                    headline=f"{fmt.pct(share_in.iloc[ai, bi]).capitalize()} of {la_} {self.rows} are {lb_}, compared with {fmt.pct(overall.iloc[bi])} across all {self.rows}.",
+                    explanation=(f"Each bar shows how often {lb_} comes up within one {a} group. "
+                                 f"The blue bar ({la_}) is well above the dashed line, which is the normal rate across everything. "
+                                 f"So {a} and {b} are connected: knowing one gives you a hint about the other."),
                     ideas=[f"If you target {la_}, lead with {lb_}: it's what that group already leans toward.",
                            f"Ask why {lb_} is less common in the other groups. There may be an opportunity there."],
                     chart={"type": "bar", "categories": [str(x) for x in col_share.sort_values(ascending=False).index],
                            "values": col_share.sort_values(ascending=False).tolist(), "unit": {"kind": "share"},
                            "highlight": [0], "value_label": f"Share that is {lb_}",
-                           "reference": {"value": float(overall.iloc[bi]), "label": "Overall"}},
+                           "reference": {"value": float(overall.iloc[bi]), "label": "Overall"},
+                           "key": [{"swatch": "data", "text": f"Blue bar: {la_}, where {lb_} is most common"},
+                                   {"swatch": "rest", "text": f"Gray bars: the other {a} groups"},
+                                   {"swatch": "reference", "text": "Dashed line: the normal rate overall"}]},
                     facts=facts,
                 ))
         # single-category distribution (mainly useful when there are no numbers)
@@ -727,12 +760,15 @@ class Engine:
                     kind="mix", section="composition", columns=[c], p=float(res.pvalue), strength=min(1.0, w),
                     passes_effect=w >= 0.3 and share >= 1.5 / k, test="Chi-square goodness-of-fit test",
                     effect_text=f"Cohen's w = {w:.2f}", n=int(vc.sum()), title=f"Most {c} is {top}",
-                    headline=f"{top} makes up {fmt.pct(share)} of all rows, the biggest share of any {c}.",
-                    explanation=f"If every {c} was equally common, each would have about {fmt.pct(1 / k)}. {top} is far above that.",
+                    headline=f"{top} makes up {fmt.pct(share)} of all {self.rows}, the biggest share of any {c}.",
+                    explanation=(f"Each bar counts how many {self.rows} have that {c}. The blue bar ({top}) is the most common. "
+                                 f"If every {c} were equally common, each would have about {fmt.pct(1 / k)}, so {top} is far above that."),
                     ideas=[f"Make sure {top} gets the attention its size deserves.",
                            "Check whether the smaller groups are small by choice or by accident."],
                     chart={"type": "bar", "categories": [str(x) for x in shown.index], "values": shown.astype(float).tolist(),
-                           "unit": None, "highlight": [0], "value_label": "Rows"},
+                           "unit": None, "highlight": [0], "value_label": self.rows.capitalize(),
+                           "key": [{"swatch": "data", "text": f"Blue bar: {top}, the most common"},
+                                   {"swatch": "rest", "text": f"Gray bars: the other {c} values"}]},
                     facts={"column": c, "top": top, "share": fmt.pct(share), "groups": str(k)},
                 ))
 
@@ -777,20 +813,23 @@ class Engine:
                 share = out.sum() / s.sum()
                 share_txt = f" Together they add up to {fmt.pct(share)} of all {m}."
                 facts["share_of_total"] = fmt.pct(share)
-            rows_word = "row has" if k == 1 else "rows have"
+            rows_word = f"{self.row} has" if k == 1 else f"{self.rows} have"
             self.add(Candidate(
                 kind="outliers", section="surprises", columns=[m], p=None,
                 strength=min(1.0, math.log10(max(ratio, 1)) / 2) if math.isfinite(ratio) else 1.0,
                 passes_effect=notable, test=f"Tukey far-out fences ({mult} x IQR)", effect_text=f"largest is {ratio:.1f}x the median",
                 n=len(s), measure=m, title=f"A few {m} values are way off the charts" if hi_side else f"A few {m} values are unusually low",
-                headline=f"{k} {rows_word} an unusually {'high' if hi_side else 'low'} {m}: up to {self.v(float(top.iloc[0]), m)}, when a typical value is {self.v(med, m)}.",
-                explanation=(f"Most {m} values sit in a fairly narrow range, but these are far outside it.{share_txt} "
-                             "They could be special cases (big deals, VIP customers) or simple typing mistakes."),
+                headline=f"{k} {rows_word} an unusually {'high' if hi_side else 'low'} {m}: up to {self.v(float(top.iloc[0]), m)}, when a typical {self.row} has {self.v(med, m)}.",
+                explanation=(f"Each orange bar is one of these unusual {self.rows}, and the dashed line shows a typical {self.row} for comparison. "
+                             f"Most {self.rows} sit close to that line, but these are far away from it.{share_txt} "
+                             "They could be special cases, like a big one-off deal, or simple typos, like an extra zero."),
                 ideas=["Look at these rows one by one: are they real, or a typo like an extra zero?",
                        "If they're real, learn what made them so different. That could be worth repeating."],
                 chart={"type": "bar", "categories": labels, "values": top.astype(float).tolist(), "unit": self.unit(m),
                        "highlight": list(range(len(labels))), "value_label": m, "accent": "attention",
-                       "reference": {"value": med, "label": "Typical"}},
+                       "reference": {"value": med, "label": "Typical"},
+                       "key": [{"swatch": "attention", "text": f"Orange bars: the unusual {self.rows}"},
+                               {"swatch": "reference", "text": f"Dashed line: a typical {self.row}"}]},
                 facts=facts, rows=frozenset(out.index), key=("outliers", m),
             ))
 
@@ -799,32 +838,49 @@ class Engine:
         main = self.prof.main_metric
         if not main:
             return
-        links = {}
+        links: dict[str, tuple[float, str]] = {}
         for c in self.cands:
             if c.q is None or c.q >= ALPHA or not c.passes_effect:
                 continue
-            if c.kind in ("group", "correlation") and main in c.columns:
+            f = c.facts
+            if c.kind == "group" and main in c.columns:
                 other = [x for x in c.columns if x != main][0]
-                links[other] = max(links.get(other, 0), c.strength)
-            if c.kind == "rhythm" and c.measure == main:
-                links["Day of the week" if c.facts.get("pattern") == "day of the week" else "Time of year"] = c.strength
+                ex = f"a {f['metric']} of {f['best_value']} for {f['best']} versus {f['worst_value']} for {f['worst']}"
+            elif c.kind == "correlation" and main in c.columns:
+                other = [x for x in c.columns if x != main][0]
+                ex = f"{f['y_when_x_high']} when {other} is high versus {f['y_when_x_low']} when it's low"
+            elif c.kind == "rhythm" and c.measure == main:
+                other = "Day of the week" if f.get("pattern") == "day of the week" else "Time of year"
+                ex = f"{f['best_value']} on {f['best']} versus {f['worst_value']} on {f['worst']}"
+            else:
+                continue
+            if c.strength > links.get(other, (0, ""))[0]:
+                links[other] = (c.strength, ex)
         if len(links) < 2:
             return
-        ordered = sorted(links.items(), key=lambda kv: kv[1], reverse=True)[:8]
+        ordered = sorted(links.items(), key=lambda kv: kv[1][0], reverse=True)[:8]
         names = [k for k, _ in ordered]
-        words = ["strong" if v >= 0.7 else "clear" if v >= 0.45 else "moderate" for _, v in ordered]
+        words = ["big difference" if v >= 0.7 else "clear difference" if v >= 0.45 else "some difference"
+                 for _, (v, _e) in ordered]
+        top_ex = ordered[0][1][1]
         self.cands.append(Candidate(
             kind="drivers", section="big-picture", columns=[main] + names, p=None, strength=1.0, passes_effect=True,
             test="Summary of the tests below", effect_text="strength scaled 0 to 1", n=len(self.df), measure=main,
-            title=f"What {main} depends on most",
-            headline=f"Out of everything I tested, {names[0]} has the biggest connection to {main}" + (f", followed by {names[1]}." if len(names) > 1 else "."),
-            explanation=(f"I checked every column against {main}. These are the ones with a real, proven link, longest bar first. "
-                         f"Columns that aren't listed didn't show a reliable connection."),
-            ideas=[f"Focus first on {names[0]}: it's the lever most connected to {main}.",
-                   "Use the chapters below to see exactly how each one plays out."],
-            chart={"type": "drivers", "categories": names, "highlight": [0], "values": [v for _, v in ordered], "words": words,
-                   "value_label": f"Connection to {main}"},
-            facts={"metric": main, "top_driver": names[0], "drivers_in_order": ", ".join(names)},
+            title=f"What changes {main} the most",
+            headline=(f"{names[0]} makes the biggest difference to {main}: {top_ex}."),
+            explanation=(f"I checked every column in your file against {main}. Each bar is one that really matters, "
+                         f"and a longer bar means a bigger effect on {main}. "
+                         f"{names[0]} matters most" + (f", then {fmt.join_words(names[1:3])}" if len(names) > 1 else "")
+                         + ". Anything not shown made no real difference."),
+            ideas=[f"Start with {names[0]}: it's where {main} changes the most.",
+                   "The chapters below show each of these in detail."],
+            chart={"type": "drivers", "categories": names, "highlight": [0], "values": [v for _, (v, _e) in ordered],
+                   "words": words, "value_label": f"Effect on {main}",
+                   "key": [{"swatch": "data", "text": f"Blue bar: what matters most for {main}"},
+                           {"swatch": "rest", "text": "Gray bars: other things that matter"},
+                           {"swatch": "none", "text": "Longer bar = bigger difference"}]},
+            facts={"metric": main, "top_driver": names[0], "drivers_in_order": ", ".join(names),
+                   "example": top_ex},
         ))
 
 
@@ -861,6 +917,8 @@ def _merge_spike(trend: Candidate, spike: Candidate) -> None:
     hl[:] = [h for h in hl if h["index"] != i]
     hl.append({"index": i, "label": "Unusual"})
     trend.chart["emphasize_point"] = True
+    k = [x for x in trend.chart.get("key", []) if x["swatch"] != "dot"]
+    trend.chart["key"] = k + [{"swatch": "attention-dot", "text": f"Orange dot: {f['period']}, an unusual spike"}]
     trend.explanation += (f" One {trend.facts.get('period', 'period')} stands out: {f['period']} was {f['value']}, "
                           f"far {'above' if f['direction'] == 'higher' else 'below'} the usual {f['usual_value']} around then. "
                           "It's worth checking what happened.")
