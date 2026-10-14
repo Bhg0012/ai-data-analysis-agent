@@ -1,0 +1,11 @@
+#!/bin/bash
+# The Tally app icon. The very first time, setup runs in a Terminal window so you
+# can watch it. After that, Tally starts quietly in the background.
+ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
+if [ ! -x "$ROOT/.venv/bin/python" ]; then
+  open -a Terminal "$ROOT/Start Tally (Mac).command"
+  exit 0
+fi
+mkdir -p "$HOME/Library/Logs"
+nohup bash "$ROOT/launchers/run-mac.sh" --quiet >> "$HOME/Library/Logs/Tally.log" 2>&1 &
+exit 0

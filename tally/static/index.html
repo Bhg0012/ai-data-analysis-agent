@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tally</title>
+  <link rel="icon" href="/static/img/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/css/app.css">
+  <script>
+    try { const t = localStorage.getItem("tally-theme"); if (t === "light" || t === "dark") document.documentElement.setAttribute("data-theme", t); } catch (e) {}
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#/" id="brand"></a>
+    <nav class="nav">
+      <a href="#/" data-nav="home">New</a>
+      <a href="#/history" data-nav="history">History</a>
+    </nav>
+    <span class="spacer"></span>
+    <button class="ai-pill" id="ai-pill" title="AI connection"><span class="dot"></span><span class="txt">Checking AI…</span></button>
+    <button class="icon-btn" id="theme-btn" title="Light or dark"></button>
+    <button class="icon-btn" id="settings-btn" title="Settings"></button>
+  </header>
+  <main id="app"></main>
+  <div id="drawer-root"></div>
+
+  <script src="/static/vendor/echarts.min.js"></script>
+  <script src="/static/vendor/html2canvas.min.js"></script>
+  <script src="/static/vendor/jspdf.umd.min.js"></script>
+  <script src="/static/js/format.js"></script>
+  <script src="/static/js/icons.js"></script>
+  <script src="/static/js/mascot.js"></script>
+  <script src="/static/js/charts.js"></script>
+  <script src="/static/js/report-view.js"></script>
+  <script src="/static/js/export.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
