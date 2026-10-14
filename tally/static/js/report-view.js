@@ -103,7 +103,11 @@
       ? `<div><b>Gaps in the data</b><ul>${r.health.missing.map((m) => `<li>'${e(m.column)}' is empty in ${e(m.share)} of rows. Findings about it use only the rows that have a value.</li>`).join("")}</ul></div>` : "";
     const notes = r.health.notes.length ? `<div><b>Good to know</b><ul>${r.health.notes.map((x) => `<li>${e(x)}</li>`).join("")}</ul></div>` : "";
     const skipped = r.health.skipped.length ? `<p>Not analysed (IDs, free text, or the same value everywhere): ${r.health.skipped.map(e).join(", ")}.</p>` : "";
-    const ai = r.model ? `Explanations were written by the local AI model <code>${e(r.model)}</code>, and checked so it can't change any numbers.` : "Explanations were written by Tally's built-in templates (the local AI wasn't connected).";
+    const cc = r.method.clarity_check;
+    const ai = r.model
+      ? `Explanations were written by the local AI model <code>${e(r.model)}</code>, and checked so it can't change any numbers.` +
+        (cc ? ` Afterwards, Tally re-read all ${cc.checked} chapters as a first-time reader would, asking "would anyone instantly understand this?", and rewrote ${cc.rewritten} of them to make them clearer.` : "")
+      : "Explanations were written by Tally's built-in templates (the local AI wasn't connected).";
     return `<details class="card about" data-block>
       <summary>${I().chevron} About your data and how I checked it</summary>
       <div class="body">

@@ -41,15 +41,26 @@ def analyze(path: Path, *, file_name: str, sheet: str | None, context: str, sett
         new = []
         for i, ins in enumerate(report["insights"]):
             step("write", f"Writing it in plain English ({i + 1} of {total})",
-                 0.1 + 0.9 * i / (total + 1), 0.1 + 0.9 * (i + 1) / (total + 1))
+                 0.1 + 0.85 * i / total, 0.1 + 0.85 * (i + 1) / total)
             new.append(narrate.rewrite_insight(client, model, ins, context, brief))
         report["insights"] = new
-        step("write", "Writing the story", 0.1 + 0.9 * total / (total + 1), 1.0)
+        report["model"] = model
+        # Re-read every chapter as a first-time reader and fix anything that isn't instantly clear.
+        checked = []
+        for i, ins in enumerate(new):
+            step("review", f"Re-reading chapter {i + 1} of {total}: is it easy to understand at first glance?",
+                 i / (total + 1), (i + 1) / (total + 1))
+            checked.append(narrate.review_insight(client, model, ins, context, brief))
+        report["insights"] = checked
+        report["method"]["clarity_check"] = {
+            "checked": sum(1 for x in checked if x.get("review", {}).get("checked")),
+            "rewritten": sum(1 for x in checked if x.get("review", {}).get("fixed")),
+        }
+        step("review", "Writing the story", total / (total + 1), 1.0)
         story = narrate.write_story(client, model, report, context)
         if story:
             report["story"].update(story)
             report["story"]["ai_written"] = True
-        report["model"] = model
     else:
         step("write", "Writing it in plain English", 0.0, 1.0)
     step("done", "Done")

@@ -42,7 +42,8 @@ LAST_SEEN = {"t": time.time()}
 LOCK = threading.Lock()
 
 # Each stage's slice of the 0-100% progress bar.
-STAGE_SPAN = {"read": (0, 10), "profile": (10, 15), "stats": (15, 55), "pick": (55, 60), "write": (60, 99)}
+STAGE_SPAN = {"read": (0, 10), "profile": (10, 15), "stats": (15, 55), "pick": (55, 60), "write": (60, 82),
+              "review": (82, 99)}
 
 STEPS = [
     ("read", "Reading your file"),
@@ -50,6 +51,7 @@ STEPS = [
     ("stats", "Running statistical checks"),
     ("pick", "Keeping only what's real"),
     ("write", "Writing it in plain English"),
+    ("review", "Double-checking it's easy to read"),
 ]
 
 
@@ -121,7 +123,7 @@ def _run_analysis(job: dict, path: Path, file_name: str, sheet: str | None, cont
         job["progress"] = max(job["progress"], round(lo + (hi - lo) * frac, 1))
         job["progress_next"] = max(job["progress"], round(lo + (hi - lo) * nxt, 1))
         # how long this sub-step usually takes, so the counter can keep moving smoothly
-        job["pace"] = 12.0 if key == "write" else 2.0  # AI writing takes several seconds per finding
+        job["pace"] = 12.0 if key in ("write", "review") else 2.0  # AI writing takes several seconds per finding
     try:
         settings = config.load_settings()
         report = analysis.analyze(path, file_name=file_name, sheet=sheet, context=context, settings=settings,
