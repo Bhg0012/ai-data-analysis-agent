@@ -1,0 +1,125 @@
+=====================================================================
+                    TALLY - HOW TO INSTALL (5 to 10 minutes)
+=====================================================================
+
+Tally has two parts:
+
+  1. TALLY itself - the app you drop spreadsheets into.
+  2. OLLAMA - a free program that runs the AI "brain" on your own
+     computer. Tally works without it, but with it you get friendlier
+     explanations and can ask questions about your data.
+
+Nothing you upload ever leaves your computer.
+
+
+---------------------------------------------------------------------
+ PART 1 - START TALLY
+---------------------------------------------------------------------
+
+ ON A MAC
+ --------
+ Option A (easiest, copy and paste one line):
+   1. Open the "Terminal" app (press Cmd + Space, type Terminal, press Enter).
+   2. Paste this line and press Enter:
+
+      curl -fsSL https://raw.githubusercontent.com/bhg0012/ai-data-analysis-agent/main/install/install-mac.sh | bash
+
+   3. Wait a minute or two the first time. Tally opens by itself, and
+      a Tally icon appears on your Desktop for next time.
+
+ Option B (you downloaded the Tally folder as a ZIP):
+   1. Unzip it and move the folder somewhere you'll keep it (like Documents).
+   2. Double-click "Start Tally (Mac).command".
+      If your Mac says it "can't be opened" or "can't be verified":
+        - Open System Settings > Privacy & Security.
+        - Scroll down and click "Open Anyway" next to the Tally message.
+        - Double-click it again and choose "Open".
+      You only have to do this once.
+   3. After the first start, you can use the "Tally" app icon in the
+      same folder (drag it to your Dock if you like).
+
+ ON WINDOWS
+ ----------
+ Option A (easiest, copy and paste one line):
+   1. Click Start, type PowerShell, and open "Windows PowerShell".
+   2. Paste this line and press Enter:
+
+      irm https://raw.githubusercontent.com/bhg0012/ai-data-analysis-agent/main/install/install-windows.ps1 | iex
+
+   3. Wait a minute or two the first time. Tally opens by itself, and
+      a Tally shortcut appears on your Desktop for next time.
+
+ Option B (you downloaded the Tally folder as a ZIP):
+   1. Right-click the ZIP > "Extract All...", and keep the folder somewhere
+      like Documents.
+   2. Double-click "Start Tally (Windows).bat".
+      If Windows shows "Windows protected your PC":
+        click "More info", then "Run anyway". Only needed once.
+   3. A Tally shortcut is added to your Desktop. Use that from now on.
+
+ Every time you start Tally, it checks GitHub and updates itself to the
+ newest version automatically. A small black window stays open while
+ Tally runs. Close it when you're done to quit Tally.
+
+
+---------------------------------------------------------------------
+ PART 2 - SET UP THE AI BRAIN (OLLAMA)
+---------------------------------------------------------------------
+
+ 1. Go to  https://ollama.com  and click "Download".
+    Install it like any normal app (Mac: drag to Applications.
+    Windows: run the installer).
+
+ 2. Open Ollama once.
+      Mac: you'll see a small llama icon in the menu bar at the top.
+      Windows: you'll see a small llama icon near the clock.
+    Ollama now runs quietly in the background. That's all it needs.
+
+ 3. In Tally, click the gear icon (top right) to open Settings.
+    It should say "Ollama is running, but has no model yet".
+
+ 4. Click "Download" next to the recommended model.
+    It's a big file (several GB), so it can take 5 to 20 minutes
+    depending on your internet. You only do this once.
+
+ 5. When it says "Connected", you're done. The dot at the top of Tally
+    turns green.
+
+ Which model should I pick?
+   - qwen3.5:9b   Recommended. Needs about 16 GB of memory (RAM).
+   - gpt-oss:20b  Smartest, but needs about 24 GB of memory.
+   - gemma4:e4b   Good writer, works well on most laptops.
+   - qwen3.5:4b   For older computers or 8 GB of memory.
+   Not sure how much memory you have?
+     Mac: Apple menu > About This Mac > "Memory".
+     Windows: Start > Settings > System > About > "Installed RAM".
+
+ Prefer typing? You can also download a model in Terminal/PowerShell:
+      ollama pull qwen3.5:9b
+
+
+---------------------------------------------------------------------
+ IF SOMETHING GOES WRONG
+---------------------------------------------------------------------
+
+ "AI not connected" at the top of Tally
+   -> Ollama isn't running. Open the Ollama app, then click
+      "Check again" in Tally's Settings.
+
+ The AI is very slow
+   -> Pick a smaller model in Settings (for example qwen3.5:4b).
+      Tally's charts and findings don't need the AI at all; it only
+      writes the friendly wording and answers chat questions.
+
+ Ollama is on a different computer or port
+   -> Settings > Advanced > "Ollama address" (the default is
+      http://localhost:11434).
+
+ Tally won't start at all
+   -> Make sure you're connected to the internet the first time
+      (it downloads what it needs once). Then try again.
+   -> Mac: look at the log in  ~/Library/Logs/Tally.log
+
+ Where are my saved reports?
+   Mac:     ~/Library/Application Support/Tally
+   Windows: %APPDATA%\Tally
