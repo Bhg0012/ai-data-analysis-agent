@@ -11,6 +11,7 @@ even small ones. Mark items `[built]`, `[planned]`, or `[idea]`.
 - Owner asked for an "update of nothing" to check that opening Tally pulls the latest
   version from GitHub. This note is the only change. Check the version tag in the
   bottom-right corner of the home screen.
+- Second update test requested by the owner.
 
 ## 2026-10-14 - Clarity re-read
 
