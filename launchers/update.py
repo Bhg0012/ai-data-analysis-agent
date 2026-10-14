@@ -44,7 +44,7 @@ def update_with_git() -> None:
 
 
 def fetch(url: str, timeout: float = 20) -> bytes:
-    req = urllib.request.Request(url, headers={"User-Agent": "Tally-updater", "Accept": "application/vnd.github.sha"})
+    req = urllib.request.Request(url, headers={"User-Agent": "Tally-updater", "Accept": "application/vnd.github+json"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
         return r.read()
 
@@ -52,17 +52,14 @@ def fetch(url: str, timeout: float = 20) -> bytes:
 def update_with_zip() -> None:
     marker = ROOT / ".tally-version"
     try:
-        latest = fetch(f"https://api.github.com/repos/{REPO}/commits/{BRANCH}").decode().strip()
+        info = json.loads(fetch(f"https://api.github.com/repos/{REPO}/commits/{BRANCH}"))
+        latest = info["sha"]
+        date = info["commit"]["committer"]["date"]
     except Exception:  # noqa: BLE001
         say("Couldn't check for updates right now. Starting the version you have.")
         return
-    if len(latest) < 7 or latest.startswith("{"):
-        try:
-            latest = json.loads(latest)["sha"]
-        except Exception:  # noqa: BLE001
-            say("Couldn't read the latest version info. Starting the version you have.")
-            return
-    current = marker.read_text().strip() if marker.exists() else ""
+    # .tally-version holds the commit id on line 1 and when it was published on line 2
+    current = marker.read_text().splitlines()[0].strip() if marker.exists() and marker.read_text().strip() else ""
     if current == latest:
         say("Tally is up to date.")
         return
@@ -84,7 +81,7 @@ def update_with_zip() -> None:
             p = ROOT / exe
             if p.exists():
                 p.chmod(0o755)
-        marker.write_text(latest)
+        marker.write_text(f"{latest}\n{date}\n")
         say("Updated Tally to the latest version.")
     except Exception as e:  # noqa: BLE001
         say(f"The update didn't finish ({e}). Starting the version you have.")
