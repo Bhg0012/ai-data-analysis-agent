@@ -6,6 +6,12 @@ even small ones. Mark items `[built]`, `[planned]`, or `[idea]`.
 
 ---
 
+## 2026-10-14 - Update test
+
+- Owner asked for an "update of nothing" to check that opening Tally pulls the latest
+  version from GitHub. This note is the only change. Check the version tag in the
+  bottom-right corner of the home screen.
+
 ## 2026-10-14 - Clarity re-read
 
 - [built] Owner: after the AI writes everything, it must reread every chart and
