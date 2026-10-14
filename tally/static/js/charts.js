@@ -61,7 +61,7 @@
       position: vertical ? "top" : "right",
       color: th.ink2, fontSize: 12.5, distance: 6,
       formatter: (p) => {
-        if (isDrivers) return spec.words[p.dataIndex] + " link";
+        if (isDrivers) return spec.words[p.dataIndex];
         if (vertical && !hl.has(p.dataIndex)) return "";
         return total ? `${f(p.value)}  ·  ${T.fmt.pct(p.value / total)}` : f(p.value);
       },
@@ -95,13 +95,13 @@
     return Object.assign(base(th), {
       grid: vertical
         ? { left: 8, right: 16, top: 30, bottom: 6, containLabel: true }
-        : { left: 8, right: isDrivers ? 96 : total ? 120 : 76, top: spec.reference ? 24 : 8, bottom: 6, containLabel: true },
+        : { left: 8, right: isDrivers ? 120 : total ? 120 : 76, top: spec.reference ? 24 : 8, bottom: 6, containLabel: true },
       xAxis: vertical ? catAxis : valAxis,
       yAxis: vertical ? valAxis : catAxis,
       tooltip: Object.assign(base(th).tooltip, {
         trigger: "item",
         formatter: (p) => {
-          const v = isDrivers ? spec.words[p.dataIndex] + " link" : f(p.value) + (total ? ` (${T.fmt.pct(p.value / total)} of total)` : "");
+          const v = isDrivers ? spec.words[p.dataIndex] : f(p.value) + (total ? ` (${T.fmt.pct(p.value / total)} of total)` : "");
           return `<b>${T.fmt.esc(p.name)}</b><br>${T.fmt.esc(spec.value_label || "")}: ${v}`;
         },
       }),
@@ -135,8 +135,8 @@
       });
     }
     return Object.assign(base(th), {
-      grid: { left: 8, right: 20, top: spec.trend ? 42 : 30, bottom: 6, containLabel: true },
-      legend: spec.trend ? { top: 0, right: 0, icon: "roundRect", itemWidth: 14, itemHeight: 3, textStyle: { color: th.ink2, fontSize: 12 } } : undefined,
+      grid: { left: 8, right: 20, top: spec.trend && !spec.key ? 42 : 30, bottom: 6, containLabel: true },
+      legend: spec.trend && !spec.key ? { top: 0, right: 0, icon: "roundRect", itemWidth: 14, itemHeight: 3, textStyle: { color: th.ink2, fontSize: 12 } } : undefined,
       xAxis: Object.assign({}, axisCommon(th), { type: "category", data: x, boundaryGap: false, splitLine: { show: false },
         axisLabel: { color: th.muted, fontSize: 11.5, hideOverlap: true } }),
       yAxis: Object.assign({}, axisCommon(th), { type: "value", axisLine: { show: false }, scale: false,
@@ -158,7 +158,7 @@
     const fy = (v) => T.fmt.value(v, spec.unit);
     return Object.assign(base(th), {
       grid: { left: 8, right: 20, top: 40, bottom: 26, containLabel: true },
-      legend: { top: 0, right: 0, itemWidth: 12, itemHeight: 8, textStyle: { color: th.ink2, fontSize: 12 } },
+      legend: spec.key ? undefined : { top: 0, right: 0, itemWidth: 12, itemHeight: 8, textStyle: { color: th.ink2, fontSize: 12 } },
       xAxis: Object.assign({}, axisCommon(th), { type: "value", scale: true, name: spec.x_label, nameLocation: "middle", nameGap: 28,
         nameTextStyle: { color: th.ink2, fontSize: 12.5 }, axisLabel: { color: th.muted, fontSize: 11.5, formatter: fx } }),
       yAxis: Object.assign({}, axisCommon(th), { type: "value", scale: true, axisLine: { show: false },

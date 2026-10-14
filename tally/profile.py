@@ -57,6 +57,11 @@ class Profile:
     columns: dict[str, Column]
     n_rows: int
     main_metric: str | None = None
+    row_noun: str = "row"  # what one row is, in everyday words ("order", "customer"...)
+
+    @property
+    def rows_noun(self) -> str:
+        return plural(self.row_noun)
 
     def by_role(self, role: str) -> list[str]:
         return [c.name for c in self.columns.values() if c.role == role]
@@ -117,7 +122,32 @@ def classify(df: pd.DataFrame, units: dict[str, dict], context: str = "") -> Pro
         cols[name] = col
     prof = Profile(columns=cols, n_rows=n)
     prof.main_metric = pick_main_metric(prof, context)
+    prof.row_noun = guess_row_noun(prof)
     return prof
+
+
+ID_WORDS = re.compile(r"\b(id|ids|no|num|number|code|key|ref|reference|name|#|uuid|guid)\b|#", re.I)
+
+
+def guess_row_noun(prof: Profile) -> str:
+    """'Order ID' -> 'order', 'Customer Name' -> 'customer'. Falls back to 'row'."""
+    for c in prof.columns.values():
+        if c.role != "id":
+            continue
+        rest = ID_WORDS.sub(" ", c.name.replace("_", " ").replace("-", " ")).strip().lower()
+        words = [w for w in rest.split() if w.isalpha()]
+        if 1 <= len(words) <= 2 and len(words[-1]) > 2:
+            w = words[-1]
+            return {"sku": "product", "txn": "transaction", "emp": "employee", "cust": "customer"}.get(w, w)
+    return "row"
+
+
+def plural(word: str) -> str:
+    if word.endswith("y") and len(word) > 1 and word[-2] not in "aeiou":
+        return word[:-1] + "ies"
+    if word.endswith(("s", "x", "ch", "sh")):
+        return word + "es"
+    return word + "s"
 
 
 def _is_sequence(s: pd.Series) -> bool:

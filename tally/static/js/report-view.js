@@ -47,6 +47,14 @@
     </section>`;
   }
 
+  /* "How to read this chart": each color on the chart, in plain words. */
+  function chartKey(chart) {
+    const key = (chart && chart.key) || [];
+    if (!key.length) return "";
+    return `<ul class="chart-key" aria-label="How to read this chart">${key
+      .map((k) => `<li><span class="sw sw-${e(k.swatch)}" aria-hidden="true"></span>${e(k.text)}</li>`).join("")}</ul>`;
+  }
+
   function insightCard(ins, i) {
     const tech = ins.stats.p !== null && ins.stats.p !== undefined
       ? `Test: ${e(ins.stats.test)} · ${e(ins.stats.effect)} · rows: ${ins.stats.n.toLocaleString()} · adjusted p: ${ins.stats.q < 0.0001 ? "< 0.0001" : (+ins.stats.q).toFixed(4)}`
@@ -57,6 +65,7 @@
         <article class="card insight">
           <h2>${e(ins.title)}</h2>
           <p class="headline">${e(ins.headline)}</p>
+          ${chartKey(ins.chart)}
           <div class="chart-box">
             <div class="chart-tools" data-noexport>
               <button class="icon-btn" title="Save this chart as an image" data-act="chart-png">${I().image}</button>

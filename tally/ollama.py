@@ -70,6 +70,13 @@ class Ollama:
             raise OllamaError(msg)
         return r.json().get("message", {})
 
+    def warm(self, model: str) -> None:
+        """Load the model into memory up front (the first load can take a while)."""
+        try:
+            httpx.post(f"{self.base}/api/generate", json={"model": model, "keep_alive": "15m"}, timeout=self.timeout)
+        except httpx.HTTPError:
+            pass  # the real request will report any problem
+
     def pull(self, model: str, on_progress) -> None:
         with httpx.stream("POST", f"{self.base}/api/pull", json={"model": model, "stream": True},
                           timeout=httpx.Timeout(30, read=None)) as r:

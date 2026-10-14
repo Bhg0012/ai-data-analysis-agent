@@ -55,6 +55,7 @@
     } catch (_) {
       state.status = null;
     }
+    if (state.status) applyMascotPrefs(state.status.settings);
     const pill = $("#ai-pill");
     const o = state.status && state.status.ollama;
     const useAi = state.status && state.status.settings.use_ai;
@@ -65,6 +66,19 @@
     pill.innerHTML = `<span class="dot ${cls}"></span><span class="txt">${e(txt)}</span>`;
     return state.status;
   }
+  function applyMascotPrefs(set) {
+    const prefs = { look: set.mascot_look || "classic", holidays: set.holiday_costumes !== false };
+    const changed = JSON.stringify(prefs) !== JSON.stringify(T.mascotPrefs) || !applyMascotPrefs.done;
+    T.mascotPrefs = prefs;
+    applyMascotPrefs.done = true;
+    if (changed) {
+      $("#brand").innerHTML = T.mascot(28, "idle") + "<span>Tally</span>";
+      T.refreshFavicon();
+      const hero = document.querySelector(".hero .mascot");
+      if (hero) hero.outerHTML = T.mascot(84, "idle");
+    }
+  }
+
   setInterval(refreshStatus, 20000);
   setInterval(() => fetch("/api/heartbeat", { method: "POST" }).catch(() => {}), 30000);
   fetch("/api/heartbeat", { method: "POST" }).catch(() => {});
@@ -206,40 +220,104 @@
         <div id="wm">${T.mascot(92, "think")}</div>
         <h2 id="wt">Reading ${e(state.workingName || "your data")}</h2>
         <p class="detail" id="wd">Getting started</p>
-        <ul class="steps" id="ws"></ul>
+        <div class="pct" id="wp" aria-live="polite">0%</div>
         <div class="bar"><i id="wb"></i></div>
+        <ul class="steps" id="ws"></ul>
         <p class="tip" id="tip">${TIPS[0]}</p>
       </div>`;
+    const here = () => location.hash.startsWith("#/working/" + jid);
     let tipI = 0;
-    const tipTimer = setInterval(() => { const t = $("#tip"); if (t) t.textContent = TIPS[++tipI % TIPS.length]; }, 4500);
+    const tipTimer = setInterval(() => {
+      const t = $("#tip");
+      if (!t || !here()) return clearInterval(tipTimer);
+      t.classList.add("fade");
+      setTimeout(() => { t.textContent = TIPS[++tipI % TIPS.length]; t.classList.remove("fade"); }, 250);
+    }, 5000);
+
+    // The server reports where it is (target) and where the current sub-step ends (next).
+    // The counter glides toward the target and keeps creeping toward "next" while it waits,
+    // so it never freezes and never jumps backwards.
+    const p = { target: 0, next: 10, pace: 2, since: performance.now(), shown: 0, done: false, last: performance.now() };
+    let finished = false;
+    const frame = (now) => {
+      if (!here()) return;
+      const dt = now - p.last;
+      p.last = now;
+      let goal;
+      if (p.done) goal = 100;
+      else {
+        const waited = (now - p.since) / 1000;
+        // creeps toward the end of the current step, slowing down but never fully stopping
+        goal = p.target + (p.next - p.target) * 0.95 * (waited / (waited + p.pace));
+      }
+      p.shown = Math.max(p.shown, p.shown + (goal - p.shown) * (1 - Math.exp(-dt / (p.done ? 120 : 260))));
+      const shown = Math.min(100, p.done && p.shown > 99.4 ? 100 : p.shown);
+      $("#wp").textContent = Math.floor(shown) + "%";
+      $("#wb").style.width = shown + "%";
+      if (p.done && shown >= 100 && !finished) { finished = true; celebrate(); return; }
+      requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+
+    let built = false;
+    let reportId = null;
+    const paintSteps = (steps) => {
+      const ul = $("#ws");
+      if (!built) {
+        ul.innerHTML = steps.map((s) => `<li data-k="${e(s.key)}"><span class="st"></span>${e(s.label)}</li>`).join("");
+        built = true;
+      }
+      steps.forEach((s) => {
+        const li = ul.querySelector(`[data-k="${s.key}"]`);
+        if (!li || li.classList.contains(s.state)) return;
+        li.className = s.state;
+        li.querySelector(".st").innerHTML = s.state === "done" ? T.icons.check : "";
+      });
+    };
+    const setDetail = (text) => {
+      const d = $("#wd");
+      if (!text || d.dataset.text === text) return;
+      d.dataset.text = text;
+      d.classList.add("fade");
+      setTimeout(() => { d.textContent = text; d.classList.remove("fade"); }, 160);
+    };
+    const celebrate = () => {
+      clearInterval(tipTimer);
+      $("#wm").innerHTML = T.mascot(92, "happy");
+      $("#wt").textContent = "Found it!";
+      setDetail("Opening your story…");
+      setTimeout(() => { if (here()) location.hash = "#/report/" + reportId; }, 900);
+    };
+
     const tick = async () => {
-      if (!location.hash.startsWith("#/working/" + jid)) { clearInterval(tipTimer); return; }
+      if (!here()) { clearInterval(tipTimer); return; }
       let j;
       try { j = await api("/api/jobs/" + jid); } catch (err) {
         clearInterval(tipTimer);
         return fail("I lost track of that analysis (the app may have restarted). Please try again.");
       }
-      $("#ws").innerHTML = j.steps.map((s) => `<li class="${s.state}"><span class="st">${s.state === "done" ? T.icons.check : ""}</span>${e(s.label)}</li>`).join("");
-      $("#wd").textContent = j.detail || "";
-      const done = j.steps.filter((s) => s.state === "done").length;
-      $("#wb").style.width = Math.max(4, (100 * (done + 0.5)) / j.steps.length) + "%";
+      paintSteps(j.steps);
+      if (j.progress !== p.target || j.progress_next !== p.next) {
+        p.target = j.progress;
+        p.next = Math.max(j.progress_next ?? j.progress, j.progress);
+        p.pace = j.pace || 2;
+        p.since = performance.now();
+      }
       if (j.status === "done") {
-        clearInterval(tipTimer);
-        $("#wb").style.width = "100%";
-        $("#wm").innerHTML = T.mascot(92, "happy");
-        $("#wt").textContent = "Found it!";
-        $("#wd").textContent = "Opening your story…";
-        setTimeout(() => (location.hash = "#/report/" + j.report_id), 700);
+        reportId = j.report_id;
+        p.done = true;
         return;
       }
+      setDetail(j.detail);
       if (j.status === "error") { clearInterval(tipTimer); return fail(j.error); }
-      setTimeout(tick, 450);
+      setTimeout(tick, 400);
     };
     const fail = (msg) => {
+      p.done = false;
       $("#wm").innerHTML = T.mascot(92, "oops");
       $("#wt").textContent = "Hmm, I got stuck";
       $("#wd").textContent = "";
-      $(".bar").remove();
+      ["#wp", ".bar", "#ws"].forEach((sel) => { const el = $(sel); if (el) el.remove(); });
       $("#tip").outerHTML = `<div class="error-box"><p>${e(msg)}</p><p style="margin-top:12px"><a class="btn" href="#/">Try another file</a></p></div>`;
     };
     tick();
@@ -254,7 +332,7 @@
       return;
     }
     state.report = r;
-    const sheets = r.other_sheets && r.other_sheets.length
+    const sheets = r.has_source !== false && r.other_sheets && r.other_sheets.length
       ? `<div class="card sheets-note" data-noexport><span>This workbook has other sheets:</span>${r.other_sheets.map((s) => `<button class="chip" data-other="${e(s)}">${e(s)}</button>`).join("")}</div>` : "";
     T.report.render(app, r, { extraAfterNext: sheets });
     wireReport(app, r);
@@ -358,7 +436,11 @@
     (r.chat || []).forEach((m) => { add(m.role, m.content, m); history.push({ role: m.role, content: m.content }); });
 
     const ready = state.status && state.status.ollama.ready;
-    if (!ready) {
+    if (r.has_source === false) {
+      $("#chat-form").classList.add("hidden");
+      $("#suggest").classList.add("hidden");
+      $("#chat-off").innerHTML = `<div class="chat-off">This is an older report, so Tally only kept the summary to save space. Add the file again (New, top left) to ask questions about it.</div>`;
+    } else if (!ready) {
       $("#chat-off").innerHTML = `<div class="chat-off">Chat needs the local AI. <button class="link-btn" id="chat-setup">Connect it in Settings</button> (takes about 5 minutes the first time).</div>`;
       $("#chat-setup").onclick = () => openSettings();
     }
@@ -397,11 +479,14 @@
       box.innerHTML = `<div class="card empty-state">${T.mascot(64, "idle")}<h2 style="margin-top:8px">Nothing here yet</h2><p>Your reports will show up here after your first analysis.</p><p style="margin-top:16px"><a class="btn" href="#/">Analyse a file</a></p></div>`;
       return;
     }
+    const total = list.reduce((a, r) => a + r.size, 0);
+    $(".h-head p").textContent = `${list.length} report${list.length === 1 ? "" : "s"} saved on this computer, using ${bytes(total)}. ` +
+      "Every report is kept. Only the 10 newest also keep a copy of your file, so you can still ask questions about them.";
     box.innerHTML = `<div class="h-grid">${list.map((r) => `
       <a class="card h-card" href="#/report/${e(r.id)}">
         <div class="t">${e(r.title)}</div>
         <div class="f">${e(r.file_name)}${r.sheet ? " · " + e(r.sheet) : ""}</div>
-        <div class="m"><span>${r.n_insights} findings</span><span>${Number(r.rows).toLocaleString()} rows</span><span>${e(T.fmt.ago(r.created_at))}</span></div>
+        <div class="m"><span>${r.n_insights} findings</span><span>${bytes(r.size)}</span><span>${e(T.fmt.ago(r.created_at))}</span></div>
         <button class="icon-btn del" title="Delete" data-del="${e(r.id)}">${T.icons.trash}</button>
       </a>`).join("")}</div>`;
     box.querySelectorAll("[data-del]").forEach((b) => (b.onclick = async (ev) => {
@@ -412,6 +497,12 @@
       toast("Deleted");
       historyPage();
     }));
+  }
+
+  function bytes(n) {
+    if (n < 1024) return n + " B";
+    if (n < 1024 * 1024) return Math.max(1, Math.round(n / 1024)) + " KB";
+    return (n / 1024 / 1024).toFixed(1) + " MB";
   }
 
   // ------------------------------------------------------------ settings
@@ -466,6 +557,13 @@
         <div class="row"><div><b style="font-weight:560">Use AI to write explanations</b><p class="muted" style="font-size:13.5px">Numbers always come from the statistics engine either way.</p></div>
         <label class="switch"><input type="checkbox" id="useai" ${set.use_ai ? "checked" : ""}><span></span></label></div>
       </section>
+      <section><div class="section-label">Tally's look</div>
+        <div class="look-pick" id="looks">${Object.entries(T.mascotLooks).map(([k, name]) =>
+          `<button data-look="${k}" class="${(set.mascot_look || "classic") === k ? "on" : ""}">${T.mascot(44, "idle", { look: k })}${e(name)}</button>`).join("")}</div>
+        <div class="row"><div><b style="font-weight:560">Dress up for holidays</b><p class="muted" style="font-size:13.5px">Pumpkins in October, a Santa hat in December, and more.</p></div>
+        <label class="switch"><input type="checkbox" id="holi" ${set.holiday_costumes !== false ? "checked" : ""}><span></span></label></div>
+        ${costumeLine(set)}
+      </section>
       <section><div class="section-label">Appearance</div>
         <div class="seg" id="seg">${["system", "light", "dark"].map((t) => `<button data-t="${t}" class="${(localStorage.getItem("tally-theme") || "system") === t ? "on" : ""}">${t[0].toUpperCase() + t.slice(1)}</button>`).join("")}</div>
       </section>
@@ -481,7 +579,21 @@
     $("#useai").onchange = (ev) => save({ use_ai: ev.target.checked });
     $("#saveurl").onclick = () => save({ ollama_url: $("#ourl").value.trim() });
     document.querySelectorAll("#seg button").forEach((b) => (b.onclick = () => { setTheme(b.dataset.t); paintSettings(); }));
+    document.querySelectorAll("#looks button").forEach((b) => (b.onclick = () => save({ mascot_look: b.dataset.look })));
+    $("#holi").onchange = (ev) => save({ holiday_costumes: ev.target.checked });
     document.querySelectorAll("[data-pull]").forEach((b) => (b.onclick = () => pullModel(b)));
+  }
+
+  function costumeLine(set) {
+    if (set.holiday_costumes === false) return "";
+    const now = T.costumeFor();
+    if (now) {
+      return `<div class="costume-row">${T.mascot(40, "idle", { costume: now })}<p>Tally is dressed up for <b>${e(T.mascotCostumes[now])}</b> right now.</p></div>`;
+    }
+    const next = T.nextCostume();
+    if (!next) return "";
+    const when = next.from.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    return `<div class="costume-row">${T.mascot(40, "idle", { costume: next.id })}<p>Next costume: <b>${e(next.name)}</b>, from ${e(when)}.</p></div>`;
   }
 
   async function pullModel(btn) {

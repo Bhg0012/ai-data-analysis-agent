@@ -30,6 +30,9 @@ FRAMES: OrderedDict[str, tuple] = OrderedDict()
 LAST_SEEN = {"t": time.time()}
 LOCK = threading.Lock()
 
+# Each stage's slice of the 0-100% progress bar.
+STAGE_SPAN = {"read": (0, 10), "profile": (10, 15), "stats": (15, 55), "pick": (55, 60), "write": (60, 99)}
+
 STEPS = [
     ("read", "Reading your file"),
     ("profile", "Understanding the columns"),
@@ -59,7 +62,13 @@ def _clean_old_uploads():
             pass
 
 
+NO_SOURCE = ("This is an older report, so Tally only kept the summary to save space on your computer. "
+             "Add the file again to ask questions about it.")
+
+
 def _frame(rid: str):
+    if not history.has_source(rid):
+        raise HTTPException(410, NO_SOURCE)
     with LOCK:
         if rid in FRAMES:
             FRAMES.move_to_end(rid)
@@ -77,23 +86,31 @@ def _new_job(kind: str) -> dict:
     jid = uuid.uuid4().hex[:12]
     job = {"id": jid, "kind": kind, "status": "running", "step": None, "label": "Starting",
            "steps": [{"key": k, "label": lbl, "state": "todo"} for k, lbl in STEPS],
-           "detail": "", "report_id": None, "error": None, "progress": 0, "started": time.time()}
+           "detail": "", "report_id": None, "error": None, "progress": 0, "progress_next": 10, "pace": 2.0,
+           "started": time.time()}
     JOBS[jid] = job
     return job
 
 
 def _run_analysis(job: dict, path: Path, file_name: str, sheet: str | None, context: str, other_sheets):
-    def step(key, label):
+    def step(key, label, frac=0.0, frac_next=None):
+        """Move the progress bar. Each stage owns a slice of 0-100, sub-steps fill it in."""
         keys = [k for k, _ in STEPS]
         if key == "done":
             for s in job["steps"]:
                 s["state"] = "done"
+            job["progress"] = job["progress_next"] = 100
             return
         idx = keys.index(key) if key in keys else 0
         for i, s in enumerate(job["steps"]):
             s["state"] = "done" if i < idx else "active" if i == idx else "todo"
+        lo, hi = STAGE_SPAN[key]
+        nxt = 1.0 if frac_next is None else frac_next
         job["step"], job["detail"] = key, label
-        job["progress"] = round(100 * idx / len(keys))
+        job["progress"] = max(job["progress"], round(lo + (hi - lo) * frac, 1))
+        job["progress_next"] = max(job["progress"], round(lo + (hi - lo) * nxt, 1))
+        # how long this sub-step usually takes, so the counter can keep moving smoothly
+        job["pace"] = 12.0 if key == "write" else 2.0  # AI writing takes several seconds per finding
     try:
         settings = config.load_settings()
         report = analysis.analyze(path, file_name=file_name, sheet=sheet, context=context, settings=settings,
@@ -133,6 +150,8 @@ class SettingsIn(BaseModel):
     ollama_url: str | None = None
     model: str | None = None
     use_ai: bool | None = None
+    mascot_look: str | None = None
+    holiday_costumes: bool | None = None
 
 
 @app.post("/api/settings")
@@ -204,6 +223,8 @@ class ReanalyzeIn(BaseModel):
 def reanalyze(rid: str, body: ReanalyzeIn):
     try:
         rep = history.load(rid)
+        if not history.has_source(rid):
+            raise HTTPException(410, NO_SOURCE)
         src = history.source_file(rid)
     except KeyError as e:
         raise HTTPException(404, "Report not found") from e
@@ -229,10 +250,19 @@ def reports():
     return history.listing()
 
 
+@app.get("/api/storage")
+def storage():
+    items = history.listing()
+    return {"reports": len(items), "bytes": sum(i["size"] for i in items),
+            "with_file": sum(1 for i in items if i["has_source"]), "keep_files_for": history.KEEP_SOURCES}
+
+
 @app.get("/api/reports/{rid}")
 def report(rid: str):
     try:
-        return JSONResponse(history.load(rid))
+        rep = history.load(rid)
+        rep["has_source"] = history.has_source(rid)
+        return JSONResponse(rep)
     except KeyError as e:
         raise HTTPException(404, "Report not found") from e
 

@@ -11,6 +11,10 @@ from .config import data_dir
 
 SAFE_ID = re.compile(r"^[a-z0-9-]{6,64}$")
 
+# Every report keeps its small snapshot (charts, text, numbers: about 20 KB) forever.
+# Only the newest few also keep a copy of the original spreadsheet, which chat needs.
+KEEP_SOURCES = 10
+
 
 def reports_dir() -> Path:
     p = data_dir() / "reports"
@@ -31,10 +35,31 @@ def report_path(rid: str) -> Path:
 
 
 def save(report: dict, source_file: Path) -> None:
+    """Save a report. The uploaded file is moved (not copied) in, so it's only stored once."""
     d = report_path(report["id"])
     d.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(source_file, d / ("source" + source_file.suffix.lower()))
+    shutil.move(str(source_file), d / ("source" + source_file.suffix.lower()))
     (d / "report.json").write_text(json.dumps(report, default=str), "utf-8")
+    prune_sources()
+
+
+def prune_sources(keep: int = KEEP_SOURCES) -> None:
+    """Older reports become snapshot-only: drop their copy of the spreadsheet."""
+    dirs = sorted((d for d in reports_dir().iterdir() if d.is_dir()), key=lambda d: d.name, reverse=True)
+    for d in dirs[keep:]:
+        for f in d.glob("source*"):
+            try:
+                f.unlink()
+            except OSError:
+                pass
+
+
+def has_source(rid: str) -> bool:
+    return any(report_path(rid).glob("source*"))
+
+
+def folder_size(rid: str) -> int:
+    return sum(f.stat().st_size for f in report_path(rid).iterdir() if f.is_file())
 
 
 def update(report: dict) -> None:
@@ -70,7 +95,7 @@ def listing() -> list[dict]:
             "id": r["id"], "title": r["story"]["title"], "file_name": r["file_name"],
             "sheet": r.get("sheet"), "created_at": r["created_at"], "rows": r["dataset"]["rows"],
             "n_insights": len(r["insights"]),
-            "kinds": [i["chart"].get("type") for i in r["insights"][:4]],
+            "size": folder_size(r["id"]), "has_source": has_source(r["id"]),
         })
     out.sort(key=lambda x: x["created_at"], reverse=True)
     return out
