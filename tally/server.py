@@ -11,12 +11,13 @@ import uuid
 from collections import OrderedDict
 from pathlib import Path
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import __version__, analysis, chat, config, history, loader
+from .build import build_id
 from .ollama import RECOMMENDED_MODELS, Ollama, OllamaError
 
 STATIC = Path(__file__).parent / "static"
@@ -24,6 +25,16 @@ SAMPLE = Path(__file__).resolve().parent.parent / "samples" / "coffee_shop_sales
 
 app = FastAPI(title="Tally", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
+BUILD = build_id()
+
+
+@app.middleware("http")
+async def no_stale_files(request, call_next):
+    """Make the window re-check its files, so an update shows up right away."""
+    response = await call_next(request)
+    if request.url.path.startswith("/static"):
+        response.headers["Cache-Control"] = "no-cache"
+    return response
 
 JOBS: dict[str, dict] = {}
 FRAMES: OrderedDict[str, tuple] = OrderedDict()
@@ -143,7 +154,16 @@ def heartbeat():
 def status():
     s = config.load_settings()
     o = Ollama(s["ollama_url"]).status(s.get("model"))
-    return {"version": __version__, "settings": s, "ollama": o, "recommended": RECOMMENDED_MODELS}
+    return {"version": __version__, "build": BUILD, "settings": s, "ollama": o, "recommended": RECOMMENDED_MODELS}
+
+
+@app.post("/api/shutdown")
+def shutdown(request: Request):
+    """Used by the launcher to replace an out-of-date copy. Only works from this computer."""
+    if request.client and request.client.host not in ("127.0.0.1", "::1", "localhost"):
+        raise HTTPException(403, "Not allowed")
+    threading.Timer(0.3, lambda: os._exit(0)).start()
+    return {"ok": True}
 
 
 class SettingsIn(BaseModel):
