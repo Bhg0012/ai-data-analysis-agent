@@ -7,9 +7,11 @@ import os
 import sys
 from pathlib import Path
 
+from .ollama import DEFAULT_MODEL
+
 DEFAULTS = {
     "ollama_url": "http://localhost:11434",
-    "model": "",          # empty = pick the best installed model automatically
+    "model": DEFAULT_MODEL,  # falls back to the best installed model if this one isn't downloaded
     "use_ai": True,       # write explanations with the local AI when it's available
 }
 

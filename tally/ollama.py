@@ -6,9 +6,12 @@ import json
 
 import httpx
 
-# Best first. The app picks the first one that's installed, unless the user chose one.
+# The model Tally uses unless the user picks another one in Settings.
+DEFAULT_MODEL = "qwen3.5:9b"
+
+# Best first. If the chosen model isn't installed, the app uses the first one here that is.
 RECOMMENDED_MODELS = [
-    {"name": "qwen3.5:9b", "size": "about 7 GB", "ram": "16 GB",
+    {"name": DEFAULT_MODEL, "size": "about 7 GB", "ram": "16 GB",
      "why": "Best all-rounder for Tally: clear writing, reliable tool use. Recommended default."},
     {"name": "gpt-oss:20b", "size": "about 14 GB", "ram": "24 GB",
      "why": "OpenAI's open model. Excellent reasoning if your computer has the memory."},

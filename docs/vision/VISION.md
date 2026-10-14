@@ -85,10 +85,10 @@ present.
 
 ## Model guidance (Ollama)
 
-Recommended order (the app auto-picks the first one installed):
-`qwen3.5:9b` (default) > `gpt-oss:20b` (if 24 GB+ RAM) > `gemma4:e4b` >
-`qwen3.5:4b` (low-memory machines). Owner originally suggested gpt-oss; it is
-supported and preferred when the machine can run it.
+**Default: `qwen3.5:9b`** (owner's choice). If it isn't downloaded, the app uses the
+first installed model in this order: `gpt-oss:20b` (if 24 GB+ RAM) > `gemma4:e4b` >
+`qwen3.5:4b` (low-memory machines). Owner originally suggested gpt-oss; it stays
+supported and can be picked in Settings.
 
 ## Roadmap ideas (not built yet)
 

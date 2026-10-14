@@ -6,6 +6,16 @@ even small ones. Mark items `[built]`, `[planned]`, or `[idea]`.
 
 ---
 
+## 2026-10-14 - Default AI model
+
+- [built] Owner chose **`qwen3.5:9b`** as the default model (`DEFAULT_MODEL` in
+  `tally/ollama.py`). If it isn't downloaded, Tally falls back to the next installed
+  model in the recommended list. The user can still pick any model in Settings.
+- Owner's own machine: M5 MacBook Pro with 24 GB of memory. `gpt-oss:20b` also fits,
+  so it stays in the recommended list as the alternative to compare against.
+- Reminder from the discussion: the model only writes wording and picks chat
+  calculations. All maths stays in the Python statistics engine.
+
 ## 2026-10-14 - Original brief (first build)
 
 The owner's original request, captured in full so no context is lost:
