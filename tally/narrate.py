@@ -161,6 +161,97 @@ def rewrite_insight(client: Ollama, model: str, ins: dict, context: str, data_br
     return new
 
 
+REVIEW_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "clear": {"type": "boolean"},
+        "problems": {"type": "array", "items": {"type": "string"}},
+        "title": {"type": "string"},
+        "headline": {"type": "string"},
+        "explanation": {"type": "string"},
+    },
+    "required": ["clear", "problems"],
+}
+
+JARGON = re.compile(
+    r"\b(p-?value|statistically significant|significance|correlat\w*|coefficient|variance|regression|median|"
+    r"distribution|dataset|insight|variable|metric|epsilon|kruskal|spearman|quartile|standard deviation)\b", re.I)
+
+
+def readability_flags(ins: dict) -> list[str]:
+    """Simple, mechanical checks that point the reviewer at obvious problems."""
+    flags = []
+    text = " ".join([ins["title"], ins["headline"], ins["explanation"]])
+    for word in sorted({m.group(0).lower() for m in JARGON.finditer(text)}):
+        flags.append(f"Uses the technical word '{word}'.")
+    for sent in re.split(r"(?<=[.!?])\s+", ins["headline"] + " " + ins["explanation"]):
+        if len(sent.split()) > 25:
+            flags.append(f"This sentence is long ({len(sent.split())} words): '{sent[:80]}...'")
+    if not re.search(r"\b(blue|gray|grey|orange|dashed|dot|dots|line|bar|bars)\b", ins["explanation"], re.I):
+        flags.append("The explanation doesn't tell the reader what to look at on the chart (which color or shape).")
+    return flags
+
+
+def _chart_summary(chart: dict) -> str:
+    t = chart.get("type")
+    if t in ("bar", "drivers"):
+        pairs = list(zip(chart.get("categories", []), chart.get("words") or chart.get("values", [])))[:10]
+        hl = [chart["categories"][i] for i in chart.get("highlight", []) if i < len(chart.get("categories", []))]
+        return f"A bar chart. Bars: {', '.join(str(c) for c, _ in pairs)}. Highlighted: {', '.join(map(str, hl)) or 'none'}."
+    if t == "line":
+        return f"A line chart over time, from {chart['x'][0]} to {chart['x'][-1]}."
+    if t == "scatter":
+        return f"A dot chart: {chart.get('x_label')} across, {chart.get('y_label')} up and down, with a trend line."
+    return "A chart."
+
+
+def review_insight(client: Ollama, model: str, ins: dict, context: str, data_brief: str = "") -> dict:
+    """Re-read a finished chapter as a first-time reader would, and fix anything that isn't instantly clear."""
+    facts_txt = "\n".join(f"- {k.replace('_', ' ')}: {v}" for k, v in ins["facts"].items() if v)
+    allowed = allowed_numbers(facts_txt, ins["headline"], ins["explanation"])
+    key_txt = "\n".join(f"- {k['text']}" for k in ins.get("chart", {}).get("key", []))
+    flags = readability_flags(ins)
+    prompt = (
+        (f"What the user told us about their data: {context}\n\n" if context else "")
+        + (f"About the spreadsheet:\n{data_brief}\n\n" if data_brief else "")
+        + f"The chart: {_chart_summary(ins.get('chart', {}))}\n"
+        + (f"Chart key (what the colors mean):\n{key_txt}\n" if key_txt else "")
+        + f"\nProven facts:\n{facts_txt}\n\n"
+        + f"The finished chapter:\nTitle: {ins['title']}\nHeadline: {ins['headline']}\nExplanation: {ins['explanation']}\n\n"
+        + (f"Automatic checks found:\n- " + "\n- ".join(flags) + "\n\n" if flags else "")
+        + "Now re-read this chapter slowly, as someone who has never seen this spreadsheet and is not good with numbers "
+          "or charts. Ask yourself honestly:\n"
+          "1. Is this easily understandable?\n"
+          "2. Would anyone be able to read it and instantly know what the chart is telling them, at first glance?\n"
+          "3. Does it say which color or shape on the chart to look at, and does that match the chart key?\n"
+          "4. Does it explain what the columns mean in everyday words, instead of just naming them?\n"
+          "5. Is every sentence short, with no technical words?\n"
+          "Return JSON. Set clear to true ONLY if the answer to every question is yes. List any problems. "
+          "If it is not clear, also return a fixed title (max 7 words), headline (one sentence) and explanation "
+          "(3 short sentences) that solve every problem, using only the facts and copying numbers exactly."
+    )
+    out = _ask(client, model, prompt, REVIEW_SCHEMA)
+    new = dict(ins)
+    review = {"checked": True, "clear": True, "fixed": False, "problems": flags}
+    if out is None:
+        review["checked"] = False
+        new["review"] = review
+        return new
+    problems = [tidy(str(p)) for p in (out.get("problems") or []) if str(p).strip()][:5]
+    review["problems"] = problems or flags
+    if out.get("clear") and not flags:
+        new["review"] = review
+        return new
+    review["clear"] = False
+    for key, limit in (("title", 90), ("headline", 300), ("explanation", 600)):
+        val = tidy(str(out.get(key, "")))
+        if val and numbers_ok(val, allowed) and len(val) < limit and val != ins[key]:
+            new[key] = val
+            review["fixed"] = True
+    new["review"] = review
+    return new
+
+
 def write_story(client: Ollama, model: str, report: dict, context: str) -> dict | None:
     heads = "\n".join(f"{i + 1}. {x['headline']}" for i, x in enumerate(report["insights"]))
     if not heads:

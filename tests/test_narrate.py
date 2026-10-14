@@ -53,3 +53,40 @@ def test_rewrite_falls_back_when_ai_invents_numbers():
 def test_rewrite_survives_garbage():
     out = narrate.rewrite_insight(FakeClient("not json at all"), "m", base_insight(), "")
     assert out["headline"] == base_insight()["headline"]
+
+
+def chapter():
+    ins = base_insight()
+    ins["explanation"] = "The blue line goes up. Sales grew each month."
+    ins["chart"] = {"type": "line", "x": ["Jan", "Dec"], "key": [{"swatch": "line", "text": "Blue line: sales each month"}]}
+    return ins
+
+
+def test_review_keeps_clear_chapters():
+    out = narrate.review_insight(FakeClient('{"clear": true, "problems": []}'), "m", chapter(), "")
+    assert out["headline"] == chapter()["headline"]
+    assert out["review"] == {"checked": True, "clear": True, "fixed": False, "problems": []}
+
+
+def test_review_rewrites_unclear_chapters():
+    c = FakeClient('{"clear": false, "problems": ["Too vague"], "title": "Sales went up all year",'
+                   '"headline": "Sales grew about 36% from Jan to Dec.",'
+                   '"explanation": "Follow the blue line: it climbs. That means more money each month."}')
+    out = narrate.review_insight(c, "m", chapter(), "")
+    assert out["title"] == "Sales went up all year"
+    assert out["review"]["fixed"] is True and out["review"]["problems"] == ["Too vague"]
+
+
+def test_review_cannot_sneak_in_new_numbers():
+    c = FakeClient('{"clear": false, "problems": ["x"], "headline": "Sales grew 80% in Dec."}')
+    out = narrate.review_insight(c, "m", chapter(), "")
+    assert out["headline"] == chapter()["headline"]
+    assert out["review"]["fixed"] is False
+
+
+def test_readability_flags_catch_jargon_and_missing_chart_pointer():
+    ins = base_insight()
+    ins["explanation"] = "The correlation coefficient is positive."
+    flags = narrate.readability_flags(ins)
+    assert any("correlation" in f for f in flags)
+    assert any("doesn't tell the reader what to look at" in f for f in flags)

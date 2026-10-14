@@ -6,6 +6,19 @@ even small ones. Mark items `[built]`, `[planned]`, or `[idea]`.
 
 ---
 
+## 2026-10-14 - Clarity re-read
+
+- [built] Owner: after the AI writes everything, it must reread every chart and
+  interpretation and ask itself "Is this easily understandable? Would anyone be able
+  to read this and instantly know what it's telling me at first glance?"
+  -> `narrate.review_insight()` re-reads each chapter as a first-time reader (with
+  the chart summary, color key and some automatic checks for jargon, long
+  sentences and missing chart pointers) and rewrites anything that isn't instantly
+  clear. Rewrites still pass the number guard. Shown as the step "Double-checking
+  it's easy to read", and noted in "About your data".
+- [built] Opening Tally always pulls the latest version from GitHub and restarts an
+  out-of-date copy that was still running in the background.
+
 ## 2026-10-14 - Mascot made official
 
 - [built] Owner liked the mockup characters and asked to make them official.
