@@ -55,6 +55,7 @@
     } catch (_) {
       state.status = null;
     }
+    if (state.status) applyMascotPrefs(state.status.settings);
     const pill = $("#ai-pill");
     const o = state.status && state.status.ollama;
     const useAi = state.status && state.status.settings.use_ai;
@@ -65,6 +66,19 @@
     pill.innerHTML = `<span class="dot ${cls}"></span><span class="txt">${e(txt)}</span>`;
     return state.status;
   }
+  function applyMascotPrefs(set) {
+    const prefs = { look: set.mascot_look || "classic", holidays: set.holiday_costumes !== false };
+    const changed = JSON.stringify(prefs) !== JSON.stringify(T.mascotPrefs) || !applyMascotPrefs.done;
+    T.mascotPrefs = prefs;
+    applyMascotPrefs.done = true;
+    if (changed) {
+      $("#brand").innerHTML = T.mascot(28, "idle") + "<span>Tally</span>";
+      T.refreshFavicon();
+      const hero = document.querySelector(".hero .mascot");
+      if (hero) hero.outerHTML = T.mascot(84, "idle");
+    }
+  }
+
   setInterval(refreshStatus, 20000);
   setInterval(() => fetch("/api/heartbeat", { method: "POST" }).catch(() => {}), 30000);
   fetch("/api/heartbeat", { method: "POST" }).catch(() => {});
@@ -543,6 +557,13 @@
         <div class="row"><div><b style="font-weight:560">Use AI to write explanations</b><p class="muted" style="font-size:13.5px">Numbers always come from the statistics engine either way.</p></div>
         <label class="switch"><input type="checkbox" id="useai" ${set.use_ai ? "checked" : ""}><span></span></label></div>
       </section>
+      <section><div class="section-label">Tally's look</div>
+        <div class="look-pick" id="looks">${Object.entries(T.mascotLooks).map(([k, name]) =>
+          `<button data-look="${k}" class="${(set.mascot_look || "classic") === k ? "on" : ""}">${T.mascot(44, "idle", { look: k })}${e(name)}</button>`).join("")}</div>
+        <div class="row"><div><b style="font-weight:560">Dress up for holidays</b><p class="muted" style="font-size:13.5px">Pumpkins in October, a Santa hat in December, and more.</p></div>
+        <label class="switch"><input type="checkbox" id="holi" ${set.holiday_costumes !== false ? "checked" : ""}><span></span></label></div>
+        ${costumeLine(set)}
+      </section>
       <section><div class="section-label">Appearance</div>
         <div class="seg" id="seg">${["system", "light", "dark"].map((t) => `<button data-t="${t}" class="${(localStorage.getItem("tally-theme") || "system") === t ? "on" : ""}">${t[0].toUpperCase() + t.slice(1)}</button>`).join("")}</div>
       </section>
@@ -558,7 +579,21 @@
     $("#useai").onchange = (ev) => save({ use_ai: ev.target.checked });
     $("#saveurl").onclick = () => save({ ollama_url: $("#ourl").value.trim() });
     document.querySelectorAll("#seg button").forEach((b) => (b.onclick = () => { setTheme(b.dataset.t); paintSettings(); }));
+    document.querySelectorAll("#looks button").forEach((b) => (b.onclick = () => save({ mascot_look: b.dataset.look })));
+    $("#holi").onchange = (ev) => save({ holiday_costumes: ev.target.checked });
     document.querySelectorAll("[data-pull]").forEach((b) => (b.onclick = () => pullModel(b)));
+  }
+
+  function costumeLine(set) {
+    if (set.holiday_costumes === false) return "";
+    const now = T.costumeFor();
+    if (now) {
+      return `<div class="costume-row">${T.mascot(40, "idle", { costume: now })}<p>Tally is dressed up for <b>${e(T.mascotCostumes[now])}</b> right now.</p></div>`;
+    }
+    const next = T.nextCostume();
+    if (!next) return "";
+    const when = next.from.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    return `<div class="costume-row">${T.mascot(40, "idle", { costume: next.id })}<p>Next costume: <b>${e(next.name)}</b>, from ${e(when)}.</p></div>`;
   }
 
   async function pullModel(btn) {

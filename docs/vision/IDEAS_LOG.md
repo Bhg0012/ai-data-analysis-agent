@@ -6,6 +6,17 @@ even small ones. Mark items `[built]`, `[planned]`, or `[idea]`.
 
 ---
 
+## 2026-10-14 - Mascot made official
+
+- [built] Owner liked the mockup characters and asked to make them official.
+  Everyday look: blue "Classic" (keeps the tally-mark hair), switchable in
+  Settings to the other three looks. All holiday costumes are built and switch by
+  date. Both Halloween versions are used (pumpkin first, witch hat for the last
+  11 days) and both Thanksgiving versions (pilgrim first, turkey for Thanksgiving
+  week). App icons regenerated in blue on a light tile.
+- [idea] Possible extras later: Lunar New Year, Earth Day, Mother's/Father's Day,
+  summer sunglasses, the user's birthday.
+
 ## 2026-10-14 - Feedback after first real use
 
 - [built] **Explanations must be dead simple.** Owner: the AI wording was vague and
@@ -24,9 +35,8 @@ even small ones. Mark items `[built]`, `[planned]`, or `[idea]`.
   about 16 KB per report and is kept forever. The copy of the original spreadsheet
   (needed for chat) is kept only for the 10 newest reports. History shows how much
   space is used.
-- [idea] **Seasonal mascot themes**, switching automatically by date (in-app
-  mascot and browser-tab icon). Mockups were shown to the owner; waiting on which
-  everyday look to use (A classic blue, B clean blob, C app tile, D chart face).
+- [built] **Seasonal mascot themes**, switching automatically by date (in-app
+  mascot and browser-tab icon). See "Mascot made official" above.
   Proposed calendar:
   - New Year: Dec 31 - Jan 2 (party hat, confetti)
   - Valentine's Day: Feb 1 - Feb 14 (pink, heart eyes)

@@ -13,6 +13,8 @@ DEFAULTS = {
     "ollama_url": "http://localhost:11434",
     "model": DEFAULT_MODEL,  # falls back to the best installed model if this one isn't downloaded
     "use_ai": True,       # write explanations with the local AI when it's available
+    "mascot_look": "classic",   # everyday look: classic | blob | tile | chart
+    "holiday_costumes": True,   # Tally dresses up for holidays
 }
 
 

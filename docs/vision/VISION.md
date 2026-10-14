@@ -74,13 +74,26 @@ present.
 ## Brand
 
 - **Name: Tally.** Counting/tallying data, friendly, short. The mascot is a little
-  orange gumdrop character whose "hair" is a five-bar tally mark (four strokes
+  **blue** gumdrop character whose "hair" is a five-bar tally mark (four strokes
   plus a diagonal). Inspired by the Codex character icon: simple, cute, iconic.
+- **Everyday look (official, owner-approved):** "Classic" blue (`#2A78D6`) with ink
+  tally hair. Users can switch to "Clean blob", "App tile" or "Chart face" in
+  Settings > Tally's look. The app icon (Mac/Windows/browser) is the classic blue
+  Tally on a light paper tile.
+- **Holiday costumes (official, owner-approved)** switch on automatically by date
+  (Settings > "Dress up for holidays" turns them off). Defined in
+  `tally/static/js/mascot.js`:
+  New Year (Dec 31 - Jan 2), Valentine's Day (Feb 1 - 14), Presidents' Day
+  (Feb 15 - 3rd Monday of Feb), St. Patrick's Day (Mar 1 - 17), Easter (Palm Sunday -
+  Easter Monday), Fourth of July (Jun 27 - Jul 5), Halloween pumpkin (Oct 1 - 20)
+  then witch hat (Oct 21 - 31), Thanksgiving pilgrim (2 weeks to 1 week before) then
+  turkey (the week of Thanksgiving through the Sunday after), Christmas Santa (Dec 1 - 30).
+  Preview any costume with `?costume=<id>` in the URL.
 - Mascot moods: idle (blinks), think (looks around while analysing, tally hair
   bounces), happy (hops when done), oops (errors).
-- Palette: warm paper background, ink text, **Tally orange `#EB6834`** for
-  personality, **one data blue `#2A78D6`** to highlight the point of each chart,
-  quiet grey for everything else. System fonts, monospace for small "techy"
+- Palette: warm paper background, ink text, **one data blue `#2A78D6`** to highlight
+  the point of each chart, quiet grey for everything else, orange `#EB6834` for
+  "look at this" (unusual values). System fonts, monospace for small "techy"
   labels. Full dark mode.
 
 ## Model guidance (Ollama)

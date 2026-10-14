@@ -150,6 +150,8 @@ class SettingsIn(BaseModel):
     ollama_url: str | None = None
     model: str | None = None
     use_ai: bool | None = None
+    mascot_look: str | None = None
+    holiday_costumes: bool | None = None
 
 
 @app.post("/api/settings")

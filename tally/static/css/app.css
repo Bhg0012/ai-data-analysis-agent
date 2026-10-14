@@ -17,7 +17,6 @@
   --data-soft: rgba(42, 120, 214, 0.1);
   --data-rest: #cfcdc5;
   --attention: #eb6834;
-  --mascot: #eb6834;
   --mascot-hair: #16171a;
   --cheek: #ffb59a;
   --good: #0f7a3d;
@@ -98,11 +97,9 @@ p { margin: 0; }
 :focus-visible { outline: 2px solid var(--data); outline-offset: 2px; border-radius: 6px; }
 
 /* ------------------------------------------------------------ mascot */
-.mascot .m-body { fill: var(--mascot); }
+.mascot { overflow: visible; }
 .mascot .m-hair path { stroke: var(--mascot-hair); stroke-width: 3.4; stroke-linecap: round; fill: none; }
-.mascot .m-eyes { fill: #16171a; transform-origin: 32px 34px; }
-.mascot .m-eye-happy, .mascot .m-mouth { stroke: #16171a; stroke-width: 2.6; stroke-linecap: round; fill: none; }
-.mascot .m-cheek { fill: var(--cheek); opacity: 0.75; }
+.mascot .m-eyes { transform-origin: 32px 34px; }
 .mascot.mood-idle .m-eyes { animation: blink 5s infinite; }
 .mascot.mood-think .m-eyes { animation: look 2.4s ease-in-out infinite; }
 .mascot.mood-think .m-hair path:not(.m-slash) { animation: tally 1.2s ease-in-out infinite; transform-box: fill-box; transform-origin: bottom; }
@@ -424,6 +421,14 @@ code, .code { font-family: var(--mono); font-size: 0.9em; background: var(--surf
 .seg { justify-self: start; display: inline-flex; border: 1px solid var(--line-strong); border-radius: 10px; padding: 2px; background: var(--surface); }
 .seg button { border: 0; background: none; padding: 5px 12px; border-radius: 8px; cursor: pointer; font-size: 13.5px; color: var(--ink-2); }
 .seg button.on { background: var(--ink); color: var(--bg); }
+
+.look-pick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.look-pick button { border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 10px 4px 8px;
+  cursor: pointer; display: grid; justify-items: center; gap: 4px; font-size: 12.5px; color: var(--ink-2); }
+.look-pick button:hover { border-color: var(--line-strong); }
+.look-pick button.on { border-color: var(--data); box-shadow: 0 0 0 3px var(--data-soft); color: var(--ink); font-weight: 560; }
+.costume-row { display: flex; align-items: center; gap: 12px; }
+.costume-row p { color: var(--ink-2); font-size: 13.5px; }
 
 /* ------------------------------------------------------------ toast */
 .toast {
