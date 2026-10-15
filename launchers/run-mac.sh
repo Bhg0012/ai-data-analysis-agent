@@ -29,6 +29,20 @@ main() {
 
   "$UV" run --quiet --no-project --python 3.12 python launchers/update.py
 
+  # If the app icon changed in an update, tell macOS so Finder, the Dock and
+  # Desktop shortcuts stop showing the old one.
+  ICON="$ROOT/Tally.app/Contents/Resources/AppIcon.icns"
+  SUM_FILE="$ROOT/.icon-sum"
+  if [ -f "$ICON" ]; then
+    SUM="$(shasum "$ICON" 2>/dev/null | cut -d' ' -f1)"
+    if [ -n "$SUM" ] && [ "$SUM" != "$(cat "$SUM_FILE" 2>/dev/null)" ]; then
+      touch "$ROOT/Tally.app" "$ROOT/Tally.app/Contents/Info.plist"
+      /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister \
+        -f "$ROOT/Tally.app" >/dev/null 2>&1 || true
+      echo "$SUM" > "$SUM_FILE"
+    fi
+  fi
+
   if [ ! -x "$ROOT/.venv/bin/python" ]; then
     echo "  Getting everything ready. The first start takes a minute or two..."
   fi
