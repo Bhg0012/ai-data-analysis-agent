@@ -9,35 +9,51 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import Path
 
 from .ollama import Ollama, OllamaError
 
-STYLE = (
-    "You are Tally, a warm, sharp data analyst. Your reader is smart but NOT technical: they have never seen this "
-    "spreadsheet before and are not comfortable with numbers or charts. Your job is to turn the finding into something "
-    "they understand instantly, like a friend pointing at a chart and saying exactly what it shows.\n"
-    "RULES:\n"
-    "- Use short sentences (under 20 words) and everyday words a 12-year-old knows.\n"
-    "- Interpret, don't just name columns. Say what a column MEANS in real life the first time you use it "
-    "(e.g. 'Revenue' -> 'the money each order brought in', 'Rating' -> 'the score customers gave, from 1 to 5'). "
-    "Use the column descriptions and the user's notes to work out what things mean.\n"
-    "- Lead with the conclusion: what is true, in plain words. Then the number that proves it.\n"
-    "- Talk the reader through the chart using its colors (the chart key tells you what each color means), "
-    "e.g. 'The blue bar is Merch, the highest.'\n"
-    "- Never use jargon: no p-value, statistically significant, correlation, coefficient, variance, regression, "
-    "median, distribution, dataset, insight, variable, metric. Say 'typical' instead of 'median'.\n"
-    "- Never use the em dash character. Use a comma, a period, or a simple hyphen instead. No emojis. "
-    "No hype words like 'amazing', 'game-changer', 'unlock', 'delve', 'leverage'.\n"
-    "- ONLY use the facts you are given. Never invent, estimate, or calculate a number. Copy numbers exactly as written.\n"
-    "- Do not add claims, causes, or links to other columns that are not in the facts. Avoid cause-and-effect words "
-    "(drives, causes, factor, because of, leads to) unless the facts say so.\n"
-    "- Keep time periods exactly as given (for example 'from Jan 2024 to Dec 2025', not 'last year').\n"
-    "- Ideas are gentle, practical suggestions ('You could...', 'It might be worth...'), never promises.\n"
-    "EXAMPLE of bad vs good:\n"
-    "BAD: 'Category has the biggest connection to Revenue, followed by Day of the week.'\n"
-    "GOOD: 'What people buy matters most for how much money an order brings in. A typical merch order brings in "
-    "$34.9, while a typical pastry order brings in $6.38.'"
+GUIDE = Path(__file__).resolve().parent.parent / "docs" / "DATA_STORYTELLING_GUIDE.md"
+
+# Used only if the guide file can't be read.
+FALLBACK_RULES = (
+    "The reader has never seen this spreadsheet and is not comfortable with numbers or charts. "
+    "They must understand each chapter within about 5 seconds.\n"
+    "1. Lead with the conclusion in plain words, then the one number that proves it.\n"
+    "2. Tell the reader where to look, using the chart's colors from the chart key.\n"
+    "3. Explain what each column means in everyday words. Short sentences, no jargon, no em dashes.\n"
+    "4. Only use the facts given. Never invent numbers, causes, or time periods."
 )
+
+
+def writer_rules() -> str:
+    """The 'Rules for the writer' from docs/DATA_STORYTELLING_GUIDE.md, read fresh every time."""
+    try:
+        text = GUIDE.read_text("utf-8")
+        m = re.search(r"<!-- TALLY-LLM-RULES:START -->(.*?)<!-- TALLY-LLM-RULES:END -->", text, re.S)
+        if m and m.group(1).strip():
+            return m.group(1).strip()
+    except OSError:
+        pass
+    return FALLBACK_RULES
+
+
+def style() -> str:
+    return (
+        "You are Tally, a warm, sharp data analyst. Your job is to turn each finding into something the reader "
+        "understands instantly, like a friend pointing at a chart and saying exactly what it shows. "
+        "Follow Tally's data storytelling rules, which are based on research about how people read charts:\n\n"
+        + writer_rules()
+        + "\n\nUse the column descriptions and the user's notes to work out what things mean in real life.\n"
+        "EXAMPLE of bad vs good:\n"
+        "BAD: 'Category has the biggest connection to Revenue, followed by Day of the week.'\n"
+        "GOOD: 'What people buy matters most for how much money an order brings in. A typical merch order brings in "
+        "$34.9, while a typical pastry order brings in $6.38.'"
+    )
+
+
+# Kept for code that imports it; the live version is style().
+STYLE = style()
 
 INSIGHT_SCHEMA = {
     "type": "object",
@@ -104,7 +120,7 @@ def tidy(text: str) -> str:
 
 def _ask(client: Ollama, model: str, prompt: str, schema: dict) -> dict | None:
     try:
-        msg = client.chat(model, [{"role": "system", "content": STYLE}, {"role": "user", "content": prompt}],
+        msg = client.chat(model, [{"role": "system", "content": style()}, {"role": "user", "content": prompt}],
                           schema=schema, temperature=0.3)
     except OllamaError:
         return None

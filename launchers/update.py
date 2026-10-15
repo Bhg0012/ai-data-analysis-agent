@@ -15,6 +15,7 @@ import sys
 import tempfile
 import urllib.request
 import zipfile
+from datetime import datetime
 from pathlib import Path
 
 REPO = os.environ.get("TALLY_REPO", "bhg0012/ai-data-analysis-agent")
@@ -87,6 +88,30 @@ def update_with_zip() -> None:
         say(f"The update didn't finish ({e}). Starting the version you have.")
 
 
+def installed_version() -> str:
+    """'a42cac6, published Oct 14, 2026 at 3:36 PM' for the copy now on this computer."""
+    sha = date = ""
+    try:
+        if (ROOT / ".git").exists() and shutil.which("git"):
+            out = subprocess.run(["git", "log", "-1", "--format=%h %cI"], cwd=ROOT, capture_output=True,
+                                 text=True, timeout=5).stdout.split()
+            sha, date = out[0], out[1]
+        elif (ROOT / ".tally-version").exists():
+            lines = (ROOT / ".tally-version").read_text().split()
+            sha, date = lines[0][:7], lines[1] if len(lines) > 1 else ""
+    except (OSError, IndexError, subprocess.SubprocessError):
+        return ""
+    if not sha:
+        return ""
+    try:
+        d = datetime.fromisoformat(date.replace("Z", "+00:00")).astimezone()
+        hour = d.hour % 12 or 12
+        when = f"{d:%b} {d.day}, {d.year} at {hour}:{d:%M} {'AM' if d.hour < 12 else 'PM'}"
+        return f"{sha}, published {when}"
+    except ValueError:
+        return sha
+
+
 def main() -> None:
     if os.environ.get("TALLY_NO_UPDATE"):
         say("Skipping the update check.")
@@ -96,6 +121,9 @@ def main() -> None:
         update_with_git()
     else:
         update_with_zip()
+    v = installed_version()
+    if v:
+        say(f"You're running version {v}.")
 
 
 if __name__ == "__main__":

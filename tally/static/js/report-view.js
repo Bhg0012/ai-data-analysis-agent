@@ -11,10 +11,12 @@
       `<span>${e(r.file_name)}${r.sheet ? " · " + e(r.sheet) : ""}</span>`,
       `<span>${d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}</span>`,
     ];
-    const actions = opts.standalone ? "" : `
+    const play = r.insights.length ? `<button class="btn play" data-act="story">${I().play} Play the story</button>` : "";
+    const actions = opts.standalone ? `<div class="r-actions" data-noexport>${play}</div>` : `
       <div class="r-actions" data-noexport>
+        ${play}
         <div class="menu">
-          <button class="btn primary" data-act="export-menu">${I().download} Save or share</button>
+          <button class="btn" data-act="export-menu">${I().download} Save or share</button>
           <div class="menu-list hidden" data-menu>
             <button data-act="export-pdf">${I().pdf}<div><b>PDF document</b><span>Best for printing, email and slides</span></div></button>
             <button data-act="export-png">${I().image}<div><b>Image (PNG)</b><span>The whole report as one picture</span></div></button>
@@ -176,6 +178,9 @@
         if (url) T.download(url, slug(ins.title) + ".png");
       };
     });
+
+    const playBtn = container.querySelector('[data-act="story"]');
+    if (playBtn && T.story) playBtn.onclick = () => T.story.open(r);
 
     // highlight the chapter you're reading in the side list
     const links = [...container.querySelectorAll("[data-toc]")];

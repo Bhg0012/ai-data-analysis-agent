@@ -6,6 +6,29 @@ even small ones. Mark items `[built]`, `[planned]`, or `[idea]`.
 
 ---
 
+## 2026-10-15 - Research-based storytelling guide
+
+- [built] Owner: do deep research on what makes visualizations and interpretations
+  good (colors, where to place words, how much text and numbers, proven psychology of
+  data storytelling) and save it as instructions Tally's AI references **every time**,
+  with the emphasis on **NOT MUCH EFFORT REQUIRED TO COMPREHEND**.
+  -> `docs/DATA_STORYTELLING_GUIDE.md` (sources at the end). Its "Rules for the writer"
+  block is read fresh and put into the AI's instructions on every write, re-read and
+  chat call (`narrate.writer_rules()`).
+
+## 2026-10-15 - "Play the story" (Wrapped-style)
+
+- [built] Owner idea: a button that replays the report like Spotify Wrapped:
+  an animation that shows the charts and interpretations in bite-sized pieces and
+  asks the user to click Next when they're ready. Make it fun to watch.
+  -> "Play the story" button on every report (and in exported interactive files):
+  full-screen bold-colored slides, story-style progress bars, a big number that
+  counts up for each finding, then the chart that proves it, an ideas slide, and a
+  "That's your story!" ending with confetti. Keyboard: arrows, space, Esc.
+- [built] The version tag now reads the version on disk each time (it used to show
+  the time the running copy started, which made test updates look like they hadn't
+  arrived). The Terminal launcher also prints "You're running version ..., published ...".
+
 ## 2026-10-14 - Update test
 
 - Owner asked for an "update of nothing" to check that opening Tally pulls the latest

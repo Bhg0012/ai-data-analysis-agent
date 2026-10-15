@@ -27,7 +27,6 @@ SAMPLE = Path(__file__).resolve().parent.parent / "samples" / "coffee_shop_sales
 app = FastAPI(title="Tally", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 BUILD = build_id()
-RELEASE = release_info()
 
 
 @app.middleware("http")
@@ -158,7 +157,7 @@ def heartbeat():
 def status():
     s = config.load_settings()
     o = Ollama(s["ollama_url"]).status(s.get("model"))
-    return {"version": __version__, "build": BUILD, "release": RELEASE, "settings": s, "ollama": o, "recommended": RECOMMENDED_MODELS}
+    return {"version": __version__, "build": BUILD, "release": release_info(), "settings": s, "ollama": o, "recommended": RECOMMENDED_MODELS}
 
 
 @app.post("/api/shutdown")

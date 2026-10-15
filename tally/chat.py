@@ -15,7 +15,7 @@ import pandas as pd
 from scipy import stats
 
 from . import fmt
-from .narrate import STYLE, allowed_numbers, numbers_ok, tidy
+from .narrate import allowed_numbers, numbers_ok, style, tidy
 from .ollama import Ollama, OllamaError
 
 OPS = {"equals", "not_equals", "greater_than", "less_than", "contains", "between"}
@@ -236,7 +236,7 @@ def answer(client: Ollama, model: str, df: pd.DataFrame, prof, report: dict, his
     )
     findings = "\n".join(f"- {i['headline']}" for i in report["insights"])
     system = (
-        STYLE + "\n\nYou are answering questions about the user's spreadsheet. "
+        style() + "\n\nYou are answering questions about the user's spreadsheet. "
         "ALWAYS call a tool to get any number before you mention it. Never guess or calculate numbers yourself. "
         "If the data can't answer the question, say so plainly and suggest what data would help. "
         "Answer in 1 to 4 short sentences. If you mention a relationship, remember it's not proof of cause.\n\n"

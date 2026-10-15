@@ -90,3 +90,11 @@ def test_readability_flags_catch_jargon_and_missing_chart_pointer():
     flags = narrate.readability_flags(ins)
     assert any("correlation" in f for f in flags)
     assert any("doesn't tell the reader what to look at" in f for f in flags)
+
+
+def test_writer_rules_come_from_the_storytelling_guide():
+    rules = narrate.writer_rules()
+    assert rules != narrate.FALLBACK_RULES, "the guide's rules block should be found and loaded"
+    assert "5 seconds" in rules and "Interpret, don't just name columns" in rules
+    assert rules in narrate.style()
+    assert "—" not in rules
