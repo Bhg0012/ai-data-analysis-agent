@@ -26,6 +26,7 @@
     refresh: p('<path d="M20 11a8 8 0 0 0-14.9-3.9L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.9 3.9L20 16"/><path d="M20 20v-4h-4"/>'),
     pencil: p('<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="m14 6 4 4"/>'),
     close: p('<path d="M6 6l12 12M18 6 6 18"/>'),
+    play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z" fill="currentColor"/></svg>',
     ruler: p('<path d="M4 17 17 4l3 3L7 20z"/><path d="m8 13 2 2M11 10l2 2M14 7l2 2"/>'),
   };
 })();

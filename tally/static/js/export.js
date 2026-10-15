@@ -86,7 +86,7 @@
 
   async function html(report) {
     const files = ["/static/css/app.css", "/static/vendor/echarts.min.js", "/static/js/format.js", "/static/js/icons.js",
-      "/static/js/mascot.js", "/static/js/charts.js", "/static/js/report-view.js"];
+      "/static/js/mascot.js", "/static/js/charts.js", "/static/js/report-view.js", "/static/js/story.js"];
     const [css, ...js] = await Promise.all(files.map((f) => fetch(f).then((r) => r.text())));
     const safe = (s) => s.replace(/<\/script/gi, "<\\/script");
     const data = JSON.stringify(Object.assign({}, report, { chat: undefined })).replace(/</g, "\\u003c");
