@@ -6,6 +6,16 @@ even small ones. Mark items `[built]`, `[planned]`, or `[idea]`.
 
 ---
 
+## 2026-10-15 - Research-based storytelling guide
+
+- [built] Owner: do deep research on what makes visualizations and interpretations
+  good (colors, where to place words, how much text and numbers, proven psychology of
+  data storytelling) and save it as instructions Tally's AI references **every time**,
+  with the emphasis on **NOT MUCH EFFORT REQUIRED TO COMPREHEND**.
+  -> `docs/DATA_STORYTELLING_GUIDE.md` (sources at the end). Its "Rules for the writer"
+  block is read fresh and put into the AI's instructions on every write, re-read and
+  chat call (`narrate.writer_rules()`).
+
 ## 2026-10-15 - "Play the story" (Wrapped-style)
 
 - [built] Owner idea: a button that replays the report like Spotify Wrapped:

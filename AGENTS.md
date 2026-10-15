@@ -2,6 +2,10 @@
 
 **Read first:** [`docs/vision/VISION.md`](docs/vision/VISION.md) (the owner's vision and
 non-negotiables) and [`docs/vision/IDEAS_LOG.md`](docs/vision/IDEAS_LOG.md) (dated idea log).
+Before touching any chart, color, text, or AI prompt, read
+[`docs/DATA_STORYTELLING_GUIDE.md`](docs/DATA_STORYTELLING_GUIDE.md): the research-based rules
+for making everything understandable at first glance. Its "Rules for the writer" block is loaded
+into the AI's instructions on every call, so edit it there.
 When the owner shares a new idea or preference, **add it to the top of `IDEAS_LOG.md`**
 and update `VISION.md` if it changes the direction. The owner switches between Claude
 Code and Codex, so these files are the shared memory.
