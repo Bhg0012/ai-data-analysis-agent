@@ -184,6 +184,31 @@ main { padding: 0 20px 80px; }
 /* ------------------------------------------------------------ home */
 .hero { text-align: center; padding: 56px 0 28px; }
 .hero .mascot { margin-bottom: 14px; }
+.hero-mascot { position: relative; display: inline-block; cursor: pointer; outline: none; border-radius: 20px; }
+.hero-mascot:focus-visible { outline: 2px solid var(--data); outline-offset: 4px; }
+.hero-mascot .mascot { display: block; transition: transform 0.2s ease; }
+.hero-mascot:hover .mascot { transform: rotate(-4deg) scale(1.04); }
+.quip {
+  position: absolute; left: calc(100% + 10px); top: 2px; z-index: 6;
+  width: max-content; max-width: 240px; text-align: left;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line-strong);
+  border-radius: 16px 16px 16px 4px; padding: 10px 14px; font-size: 14.5px; line-height: 1.4; font-weight: 520;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.12);
+  opacity: 0; transform: scale(0.6) translateY(6px); transform-origin: 0% 100%; pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+.quip::before {
+  content: ""; position: absolute; left: -7px; bottom: 10px; width: 12px; height: 12px;
+  background: var(--surface); border-left: 1px solid var(--line-strong); border-bottom: 1px solid var(--line-strong);
+  transform: rotate(45deg);
+}
+.quip.show { opacity: 1; transform: none; animation: quip-pop 0.35s cubic-bezier(.3,1.6,.5,1); }
+@keyframes quip-pop { 0% { transform: scale(0.6) translateY(6px); } 100% { transform: none; } }
+@media (max-width: 640px) {
+  .quip { left: 50%; top: calc(100% - 4px); transform-origin: 50% 0%; translate: -50% 0; border-radius: 16px; }
+  .quip::before { left: calc(50% - 6px); top: -7px; bottom: auto; border: 0; border-left: 1px solid var(--line-strong); border-top: 1px solid var(--line-strong); }
+}
+@media (prefers-reduced-motion: reduce) { .quip, .quip.show, .hero-mascot .mascot { animation: none; transition: none; transform: none; } }
 .hero h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 680; letter-spacing: -0.03em; }
 .hero p { color: var(--ink-2); font-size: 17.5px; max-width: 540px; margin: 14px auto 0; }
 .drop {

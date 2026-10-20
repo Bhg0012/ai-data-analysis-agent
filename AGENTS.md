@@ -11,6 +11,10 @@ and update `VISION.md` if it changes the direction. The owner switches between C
 Code and Codex, so these files are the shared memory.
 
 ## Owner preferences
+- **Ship every change automatically.** When you finish a change: run the tests, commit,
+  push, open a pull request into `main`, and merge it right away (no need to ask). The
+  owner's copy of Tally updates itself from `main` every time it opens. Never merge if
+  the tests fail; fix them first or explain what's wrong.
 - Never use the em dash character in user-facing text, docs, or generated wording.
   Use a comma, period, or a simple hyphen.
 - Simplicity first. Plain language. Calm visuals. Nothing that looks like "AI slop".

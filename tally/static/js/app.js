@@ -103,7 +103,10 @@
     app.innerHTML = `
       <div class="page">
         <section class="hero">
-          ${T.mascot(84, "idle")}
+          <div class="hero-mascot" tabindex="0" aria-label="Say hi to Tally">
+            ${T.mascot(84, "idle")}
+            <div class="quip" role="status" aria-live="polite"></div>
+          </div>
           <h1>Drop in a spreadsheet.<br>I'll find the story.</h1>
           <p>Tally reads every row, tests every pattern with real statistics, and explains what matters in plain English. Your data never leaves this computer.</p>
         </section>
@@ -117,6 +120,7 @@
       </div>
       <div class="version-tag" title="${e(versionTitle())}">${e(versionText())}</div>`;
     paintPicker();
+    T.wireQuips($(".hero-mascot"));
     try {
       const list = (await api("/api/reports")).slice(0, 3);
       if (list.length) {
