@@ -6,6 +6,14 @@ even small ones. Mark items `[built]`, `[planned]`, or `[idea]`.
 
 ---
 
+## 2026-10-20 - Mascot speech bubbles
+
+- [built] Owner: a cute chat bubble that says something funny or cute when you hover
+  over the Tally mascot on the home screen, picked at random from lots of lines.
+  -> `tally/static/js/quips.js`: 40 everyday lines plus holiday lines that mix in while
+  Tally wears a costume. Tally smiles while talking. Works on hover, keyboard focus and
+  tap (tap again for a new line). Add more lines to the list any time.
+
 ## 2026-10-15 - Research-based storytelling guide
 
 - [built] Owner: do deep research on what makes visualizations and interpretations
