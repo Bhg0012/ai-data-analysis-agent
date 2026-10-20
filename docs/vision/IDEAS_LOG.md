@@ -6,6 +6,11 @@ even small ones. Mark items `[built]`, `[planned]`, or `[idea]`.
 
 ---
 
+## 2026-10-20 - Auto-merge
+
+- Owner: merge everything automatically when changes are made. Agents now test,
+  push, open a PR into `main` and merge it without asking (rule in `AGENTS.md`).
+
 ## 2026-10-20 - Mascot speech bubbles
 
 - [built] Owner: a cute chat bubble that says something funny or cute when you hover
